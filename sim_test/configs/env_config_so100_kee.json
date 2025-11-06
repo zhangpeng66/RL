@@ -1,0 +1,102 @@
+{
+    "env": {
+        "robot": {
+            "type": "so100_follower",
+            "port": "/dev/usb_follower_arm",
+            "use_degrees": true,
+            "id": "main_follower",
+            "cameras": {
+                "top": {
+                    "type": "opencv",
+                    "index_or_path": "/dev/usb_realsense_rgb",
+                    "height": 240,
+                    "width": 320,
+                    "fps": 30,
+                    "rotation": 180
+                },
+                "wrist": {
+                    "type": "opencv",
+                    "index_or_path": "/dev/usb_follower_cam_wrist",
+                    "height": 240,
+                    "width": 320,
+                    "fps": 30
+                }
+            }
+        },
+        "teleop": {
+            "type": "keyboard_ee",
+            "use_gripper": true
+        },
+        "processor": {
+            "control_mode": "keyboard_ee",
+            "observation": {
+                "display_cameras": false,
+                "add_joint_velocity_to_observation": true,
+                "add_current_to_observation": true
+            },
+            "image_preprocessing": {
+                "crop_params_dict": null,
+                "resize_size": [
+                    128,
+                    128
+                ]
+            },
+            "gripper": {
+                "use_gripper": true,
+                "gripper_penalty": -0.02
+            },
+            "reset": {
+                "fixed_reset_joint_positions": [
+                    0.00,
+                    -20.00,
+                    25.00,
+                    90.00,
+                    90.00,
+                    30.00
+                ],
+                "reset_time_s": 2.5,
+                "control_time_s": 20.0,
+                "terminate_on_success": true
+            },
+            "inverse_kinematics": {
+                "urdf_path": "../SO-ARM100/Simulation/SO101/so101_new_calib.urdf",
+                "target_frame_name": "gripper_frame_link",
+                "end_effector_bounds": {
+                    "min": [
+                        0.115,
+                        -0.145,
+                        -0.0075
+                    ],
+                    "max": [
+                        0.26,
+                        0.145,
+                        0.1
+                    ]
+                },
+                "end_effector_step_sizes": {
+                    "x": 0.005,
+                    "y": 0.005,
+                    "z": 0.01
+                }
+            },
+            "reward_classifier": {
+                "pretrained_path": null,
+                "success_threshold": 0.5,
+                "success_reward": 1.0
+            },
+            "max_gripper_pos": 30
+        },
+        "name": "real_robot",
+        "fps": 10
+    },
+    "dataset": {
+        "repo_id": "jpizarrom/pick_lift_cube_pipeline_test",
+        "root": null,
+        "task": "",
+        "num_episodes_to_record": 2,
+        "replay_episode": null,
+        "push_to_hub": false
+    },
+    "mode": null,
+    "device": "cuda"
+}
