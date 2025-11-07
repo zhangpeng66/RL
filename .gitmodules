@@ -1,3 +1,6 @@
 [submodule "lerobot"]
 	path = lerobot
 	url = https://github.com/huggingface/lerobot
+[submodule "easy-rl"]
+	path = easy-rl
+	url = https://github.com/datawhalechina/easy-rl

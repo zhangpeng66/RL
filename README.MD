@@ -16,7 +16,6 @@ lerobot-dataset-viz  --repo-id lerobot/pusht   --root /home/ahpc/.cache/huggingf
 python -m lerobot.rl.gym_manipulator --config_path /home/ahpc/RL/sim_test/configs/gym_hil_env.json
 出现查找不到设备的时候崩溃现象，修改如下：
 ```C++
-   action_features = teleop_device.action_features
    # Get action features from teleop device or environment action space
    if teleop_device is not None:
       action_features = teleop_device.action_features
@@ -29,10 +28,16 @@ python -m lerobot.rl.gym_manipulator --config_path /home/ahpc/RL/sim_test/config
             "shape": action_space.shape,
             "names": None,
       }
-
 ```
 需要键盘控制的时候需要先按下**空格健**使能控制
-
+Keyboard controls:
+  Arrow keys: Move in X-Y plane
+  Shift and Shift_R: Move in Z axis
+  Right Ctrl and Left Ctrl: Open and close gripper
+  Enter: End episode with SUCCESS
+  Backspace: End episode with FAILURE
+  Space: Start/Stop Intervention
+  ESC: Exit
 
 
 ## 传统机器人技术
@@ -60,17 +65,16 @@ python -m lerobot.rl.gym_manipulator --config_path /home/ahpc/RL/sim_test/config
 列出了当前lerobot中可用的所有机器人学习策略：基于Transformer的动作分块（ACT）、扩散策略（Diffusion Policy）、向量量化行为Transformer（VQ-BeT）、SmolVLA、人在环样本高效强化学习（HIL-SERL）以及TD-MPC。
 
 ### 强化学习（简明）介绍
-强化学习是机器学习的一个子领域，核心目标是开发能够在动态环境中持续行动的自主系统（智能体），并形成（理想情况下性能优良的）控制策略。对机器人技术而言至关重要的是，强化学习智能体通过“试错”改进性能，无需依赖问题动力学的显式模型，而是以交互数据为核心。在强化学习中，智能体与环境之间的反馈回路（图12）通过“奖励”（一种标量值）建立——奖励用于衡量某一状态转移对实现目标的“合意程度”。
-形式上，智能体与环境之间的交互通常通过**马尔可夫决策过程（MDP） 建模**。
+强化学习是机器学习的一个子领域，核心目标是agent（智能体）在进行某个任务action时（决策），首先与environment进行交互，产生新的状态state，同时环境给出奖励reward，如此循环下去，agent和environment不断交互产生更多新的数据。强化学习算法就是通过一系列动作策略与环境交互，产生新的数据，再利用新的数据去修改自身的动作策略，经过数次迭代后，agent就会学习到完成任务所需要的动作策略。
+![alt text](image-7.png)
 
-形式上，智能体与环境之间的交互通常通过马尔可夫决策过程（MDP） 建模。将机器人问题通过马尔可夫决策过程表示具有多项优势，包括（1）通过其固有的随机形式纳入不确定性；（2）为“无需环境动力学显式模型的学习”提供理论严谨的框架。尽管马尔可夫决策过程也可支持连续时间形式，但在强化学习中通常考虑离散时间场景，假设交互在离散时间步t = 0,1,2,3,4.....T发生。允许无限次交互（$T\rightarrow\infty$）的马尔可夫决策过程被称为“无限时域”（infinite-horizon）马尔可夫决策过程，与之相对的是“有限时域”（finite-horizon）马尔可夫决策过程（T为有限值）。除非特别说明，本文仅讨论离散时间有限时域（ episodic，片段式）马尔可夫决策过程。
+形式上，智能体与环境之间的交互通常通过**马尔可夫决策过程（MDP） 建模**。将机器人问题通过马尔可夫决策过程表示具有多项优势，包括（1）通过其固有的随机形式纳入不确定性；（2）为“无需环境动力学显式模型的学习”提供理论严谨的框架。尽管马尔可夫决策过程也可支持连续时间形式，但在强化学习中通常考虑离散时间场景，假设交互在离散时间步t = 0,1,2,3,4.....T发生。允许无限次交互（$T\rightarrow\infty$）的马尔可夫决策过程被称为“无限时域”（infinite-horizon）马尔可夫决策过程，与之相对的是“有限时域”（finite-horizon）马尔可夫决策过程（T为有限值）。除非特别说明，本文仅讨论离散时间有限时域（ episodic，片段式）马尔可夫决策过程。
 长度为T的马尔可夫决策过程（MDP）是一个元组，有如下定义：
-![alt text](image-2.png)
-满足贝叶斯公式
-![alt text](image-4.png)
-强化学习分类
-![alt text](image-3.png)
-未完待续。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。
+S为状态空间；$s_t\in S$表示时间t时环境的状态。在机器人技术中，状态通常包括机器人配置和速度，还可包含传感器读数（如摄像头或音频流）。
+A为动作空间；$a_t \in A$可表示t时间步时的关节力矩、关节速度，甚至末端执行器指令。通常，动作对应于“干预机器人配置的指令”。
+D表示（可能非确定性的）环境动力学，有$D(s_t,a_t,s_{t+1}) = P(s_{t+1}| s_t,a_t)$,表示从一个状态转移到另一个状态的概率分布
+r为奖励函数，描述了在状态$s_t$下执行$a_t$的期望即时奖励$\mathcal{R}(s,a)=\mathbb{E}[R_{t+1}|S_{t}=s,A_{t}=a]$
+$\gamma$为折扣因子，用于调节对**即时奖励与长期奖励的偏好**
 
 ### 机器人的真实世界强化学习
 端到端的简化控制流水线、数据驱动的特征提取、“无需显式建模而依赖交互数据”——这些都是机器人强化学习的核心特征。然而，强化学习在安全性和学习效率方面仍存在局限性，这对真实世界机器人应用而言尤为关键。    
