@@ -4,3 +4,6 @@
 [submodule "easy-rl"]
 	path = easy-rl
 	url = https://github.com/datawhalechina/easy-rl
+[submodule "Book-Mathematical-Foundation-of-Reinforcement-Learning"]
+	path = Book-Mathematical-Foundation-of-Reinforcement-Learning
+	url = https://github.com/MathFoundationRL/Book-Mathematical-Foundation-of-Reinforcement-Learning
