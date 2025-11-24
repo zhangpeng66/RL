@@ -39,7 +39,19 @@ Keyboard controls:
   Space: Start/Stop Intervention
   ESC: Exit
 
-
+训练日志解读
+step: 当前训练步数
+smpl: 已处理的样本数
+ep: 已处理的数据集中的回合数
+epch: 已完成的训练轮数
+loss: 当前批次的损失值
+grdn: 梯度范数
+lr: 当前学习率
+updt_s: 网络参数更新时间（秒）
+data_s: 数据加载时间（秒）
+∑rwrd: 评估回合的平均累积奖励
+success: 评估回合的成功率
+eval_s: 评估时间（秒）
 ## 传统机器人技术
 参考知乎[机器学习](https://zhuanlan.zhihu.com/p/1961959949446936245)
 ### 显式模型与隐式模型

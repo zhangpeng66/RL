@@ -80,6 +80,40 @@ python -m lerobot.scripts.lerobot_record \
     --dataset.num_episodes=10 --dataset.episode_time_s=20 \
     --dataset.single_task="Grab the orange ball"
 
+//本地回放录制数据
+python -m lerobot.scripts.lerobot_dataset_viz \
+    --repo-id zp_robot/so101_test \
+    --episode-index 40
+//处理数据集
+export PYTHONPATH=/home/ahpc/RL/lerobot/src
+python3 process_dataset.py 
+
+
+//训练数据
+export HF_USER=zp_robot
+
+python -m lerobot.scripts.lerobot_train  \
+  --dataset.repo_id=${HF_USER}/so101_test \
+  --policy.type=act \
+  --output_dir=outputs/train/act_so101_test \
+  --job_name=act_so101_test \
+  --policy.device=cuda \
+  --policy.push_to_hub=false \
+  --wandb.enable=false \
+  --batch_size=16 \
+  --num_workers=4
+
+#带模型训练
+python -m lerobot.scripts.lerobot_train  \
+  --dataset.repo_id=${HF_USER}/so101_test \
+  --policy.type=act \
+  --output_dir=outputs/train/act_so101_test \
+  --job_name=act_so101_test \
+  --policy.device=cuda \
+  --policy.push_to_hub=false \
+  --wandb.enable=false \
+  --config_path=outputs/train/act_so101_test/checkpoints/last/pretrained_model
+
 //推理测试
 python -m lerobot.scripts.lerobot_record \
     --robot.disable_torque_on_disconnect=true \
