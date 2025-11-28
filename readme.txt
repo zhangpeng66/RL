@@ -1,3 +1,4 @@
+//////////////以下脚本源码在RL/lerobot/src/lerobot/scripts文件夹里面
 //查看端口号
 python -m lerobot.scripts.lerobot_find_port
 sudo chmod 666 /dev/ttyACM0
@@ -88,6 +89,21 @@ python -m lerobot.scripts.lerobot_dataset_viz \
 export PYTHONPATH=/home/ahpc/RL/lerobot/src
 python3 process_dataset.py 
 
+//打印数据集信息
+Original dataset: 60 episodes, 19493 frames
+Features: ['action', 'observation.state', 'observation.images.handeye', 'observation.images.fixed', 'timestamp', 'frame_index', 'episode_index', 'index', 'task_index']
+
+//推荐新手使用ACT，由 "--policy.type=act" 指定训练的策略为ACT。
+//其他可选择的策略：
+- act, Action Chunking Transformers
+- diffusion, Diffusion Policy
+- tdmpc, TDMPC Policy
+- vqbet, VQ-BeT
+- smolvla, SmolVLA
+- pi0, A Vision-Language-Action Flow Model for General Robot Control
+- pi0fast
+- sac
+- reward_classifier
 
 //训练数据
 export HF_USER=zp_robot
@@ -103,6 +119,10 @@ python -m lerobot.scripts.lerobot_train  \
   --batch_size=16 \
   --num_workers=4
 
+//继续训练
+python -m lerobot.scripts.lerobot_train \
+  --config_path=outputs/train/act_so101_diffusion/checkpoints/last/pretrained_model/train_config.json \
+  --resume=true
 #带模型训练
 python -m lerobot.scripts.lerobot_train  \
   --dataset.repo_id=${HF_USER}/so101_test \
@@ -113,6 +133,18 @@ python -m lerobot.scripts.lerobot_train  \
   --policy.push_to_hub=false \
   --wandb.enable=false \
   --config_path=outputs/train/act_so101_test/checkpoints/last/pretrained_model
+
+// SmolVLA训练
+//安装依赖包
+pip install -e ".[smolvla]"
+//开始训练
+python -m lerobot.scripts.lerobot_train \
+  --dataset.repo_id=${HF_USER}/so101_test_merged --policy.push_to_hub=false \
+  --policy.path=lerobot/smolvla_base --policy.device=cuda \
+  --output_dir=outputs/train/smolvla_test \
+  --job_name=smolvla_test \
+  --batch_size=32 --steps=100000 \
+  --wandb.enable=false --rename_map='{"observation.images.handeye": "observation.images.camera1", "observation.images.fixed": "observation.images.camera2"}'
 
 //推理测试
 python -m lerobot.scripts.lerobot_record \
@@ -131,3 +163,9 @@ python -m lerobot.scripts.lerobot_record \
     --policy.path=outputs/checkpoints/last/pretrained_model \
     --policy.device=cuda \
     --dataset.repo_id=${HF_USER}/eval_so101 --dataset.push_to_hub=false
+
+
+
+export PYTHONPATH=/home/ahpc/RL/percipio
+export LD_LIBRARY_PATH=/home/ahpc/RL/percipio
+python3 zprobot_find_cameras.py  percipio

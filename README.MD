@@ -39,11 +39,29 @@ Keyboard controls:
   Space: Start/Stop Intervention
   ESC: Exit
 
+
+```log
+INFO 2025-11-24 19:15:31 ot_train.py:262 cfg.steps=100000 (100K)
+INFO 2025-11-24 19:15:31 ot_train.py:263 dataset.num_frames=38759 (39K)
+INFO 2025-11-24 19:15:31 ot_train.py:264 dataset.num_episodes=102
+INFO 2025-11-24 19:15:31 ot_train.py:267 Effective batch size: 32 x 1 = 32
+INFO 2025-11-24 19:15:31 ot_train.py:268 num_learnable_params=51597190 (52M)
+INFO 2025-11-24 19:15:31 ot_train.py:269 num_total_params=51597190 (52M)
+INFO 2025-11-24 19:15:31 ot_train.py:324 Start offline training on a fixed dataset
+INFO 2025-11-24 19:17:53 ot_train.py:351 step:200 smpl:6K ep:17 epch:0.17 loss:5.675 grdn:90.898 lr:1.0e-05 updt_s:0.386 data_s:0.324
+INFO 2025-11-24 19:20:10 ot_train.py:351 step:400 smpl:13K ep:34 epch:0.33 loss:2.394 grdn:43.751 lr:1.0e-05 updt_s:0.373 data_s:0.313
+INFO 2025-11-24 19:22:28 ot_train.py:351 step:600 smpl:19K ep:51 epch:0.50 loss:1.943 grdn:39.733 lr:1.0e-05 updt_s:0.376 data_s:0.313
+
+INFO 2025-11-25 14:19:10 ot_train.py:351 step:100K smpl:3M ep:8K epch:82.40 loss:0.039 grdn:3.930 lr:1.0e-05 updt_s:0.374 data_s:0.312
+INFO 2025-11-25 14:21:27 ot_train.py:351 step:100K smpl:3M ep:8K epch:82.56 loss:0.039 grdn:3.996 lr:1.0e-05 updt_s:0.374 data_s:0.312
+INFO 2025-11-25 14:21:27 ot_train.py:361 Checkpoint policy after step 100000
+INFO 2025-11-25 14:21:28 ot_train.py:430 End of training
+```
 训练日志解读
 step: 当前训练步数
 smpl: 已处理的样本数
-ep: 已处理的数据集中的回合数
-epch: 已完成的训练轮数
+ep: 已处理的 episode 数量
+epch: 已处理的 epoch 数量
 loss: 当前批次的损失值
 grdn: 梯度范数
 lr: 当前学习率
@@ -52,6 +70,63 @@ data_s: 数据加载时间（秒）
 ∑rwrd: 评估回合的平均累积奖励
 success: 评估回合的成功率
 eval_s: 评估时间（秒）
+```python
+outputs/train/my_experiment/checkpoints/
+├── 000100                          # 训练步数为100的检查点
+│   ├── pretrained_model/           # 预训练模型目录
+│   │   ├── config.json             # 策略配置
+│   │   ├── model.safetensors       # 模型权重
+│   │   └── train_config.json       # 训练配置
+│   └── training_state/             # 训练状态目录
+│       ├── optimizer_param_groups.json  # 优化器参数组
+│       ├── optimizer_state.safetensors  # 优化器状态
+│       ├── rng_state.safetensors        # 随机数生成器状态
+│       ├── scheduler_state.json         # 学习率调度器状态
+│       └── training_step.json           # 训练步数
+├── 000200                          # 训练步数为200的检查点
+└── last -> 000200                  # 指向最新检查点的符号链接
+```
+### 提高模型性能
+除了基本的训练配置外，LeRobot的命令行训练工具还提供了多种高级配置选项，用于优化训练过程和提高模型性能。
+
+学习率调整：
+```shell
+python lerobot/scripts/train.py \
+    --dataset.repo_id=lerobot/pusht \
+    --policy.type=diffusion \
+    --optim.lr=5e-5 \
+    --optim.weight_decay=0.01
+```
+这个命令设置了初始学习率为5e-5，权重衰减为0.01。
+
+学习率调度：
+```shell
+python lerobot/scripts/train.py \
+    --dataset.repo_id=lerobot/pusht \
+    --policy.type=diffusion \
+    --optim.lr=5e-5 \
+    --optim.scheduler.type=cosine \
+    --optim.scheduler.warmup_steps=1000
+```
+这个命令启用了余弦学习率调度，并设置了1000步的预热期。
+
+混合精度训练：
+```shell
+python lerobot/scripts/train.py \
+    --dataset.repo_id=lerobot/pusht \
+    --policy.type=diffusion \
+    --policy.use_amp=true
+```
+这个命令启用了混合精度训练，可以显著提高训练速度，同时减少内存使用。
+
+梯度裁剪：
+```shell
+python lerobot/scripts/train.py \
+    --dataset.repo_id=lerobot/pusht \
+    --policy.type=diffusion \
+    --optim.grad_clip=1.0
+```
+这个命令设置了梯度裁剪阈值为1.0，有助于稳定训练过程。
 ## 传统机器人技术
 参考知乎[机器学习](https://zhuanlan.zhihu.com/p/1961959949446936245)
 ### 显式模型与隐式模型

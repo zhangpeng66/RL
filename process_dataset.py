@@ -39,24 +39,24 @@ from lerobot.datasets.lerobot_dataset import LeRobotDataset
 def main():
     print("Loading dataset...")
     dataset = LeRobotDataset("zp_robot/so101_test")
-
-    print(f"Original dataset: {dataset.meta.total_episodes} episodes, {dataset.meta.total_frames} frames")
+    # LeRobot使用元数据系统来管理数据集的结构信息
+    print(f"Original dataset: {dataset.meta.total_episodes} episodes, {dataset.meta.total_frames} frames ,repo_id:{dataset.meta.repo_id}")
     print(f"Features: {list(dataset.meta.features.keys())}")
     
-    # print("\n4. Merging datasets...")
-    # dataset1 = LeRobotDataset("zp_robot/so101_test1118")
-    # print(f"Original dataset: {dataset1.meta.total_episodes} episodes, {dataset1.meta.total_frames} frames")
+    print("\n4. Merging datasets...")
+    dataset1 = LeRobotDataset("zp_robot/so101_test_filtered")
+    print(f"Original dataset: {dataset1.meta.total_episodes} episodes, {dataset1.meta.total_frames} frames")
     # dataset2 = LeRobotDataset("zp_robot/so101_test1119")
     # print(f"Original dataset: {dataset2.meta.total_episodes} episodes, {dataset2.meta.total_frames} frames")
     
-    # print("\n1. Merging train and val splits back together...")
-    # merged = merge_datasets([dataset,dataset2,dataset2], output_repo_id="zp_robot/so101_test_merged")
-    # print(f"Merged dataset: {merged.meta.total_episodes} episodes")
+    print("\n1. Merging train and val splits back together...")
+    merged = merge_datasets([dataset,dataset1], output_repo_id="zp_robot/so101_test_merged")
+    print(f"Merged dataset: {merged.meta.total_episodes} episodes")
 
-    print("\n Deleting episodes ...")
-    filtered_dataset = delete_episodes(dataset, episode_indices=[0,1,2,3,4,5,6,7,8,18,12,29,34,38,42,44,47,50], repo_id="zp_robot/so101_test_filtered")
-    print(f"Filtered dataset: {filtered_dataset.meta.total_episodes} episodes")
-    print("\nDone! Check ~/.cache/huggingface/lerobot/ for the created datasets.")
+    # print("\n Deleting episodes ...")
+    # filtered_dataset = delete_episodes(dataset, episode_indices=[0,1,2,3,4,5,6,7,8,18,12,29,34,38,42,44,47,50], repo_id="zp_robot/so101_test_filtered")
+    # print(f"Filtered dataset: {filtered_dataset.meta.total_episodes} episodes")
+    # print("\nDone! Check ~/.cache/huggingface/lerobot/ for the created datasets.")
 
 
 if __name__ == "__main__":
