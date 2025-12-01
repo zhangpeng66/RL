@@ -147,6 +147,10 @@ python -m lerobot.scripts.lerobot_train \
   --wandb.enable=false --rename_map='{"observation.images.handeye": "observation.images.camera1", "observation.images.fixed": "observation.images.camera2"}'
 
 //推理测试
+export HF_USER=zp_robot
+cd RL/lerobot/src
+rm -rf ~/.cache/huggingface/lerobot/zp_robot/eval_so101
+
 python -m lerobot.scripts.lerobot_record \
     --robot.disable_torque_on_disconnect=true \
     --robot.type=so101_follower \
@@ -160,11 +164,29 @@ python -m lerobot.scripts.lerobot_record \
     --dataset.repo_id=${HF_USER}/so101_test \
     --dataset.num_episodes=10 --dataset.episode_time_s=20 \
     --dataset.single_task="Grab the orange ball" \
-    --policy.path=outputs/checkpoints/last/pretrained_model \
+    --policy.path=outputs/checkpoints_act/last/pretrained_model \
     --policy.device=cuda \
     --dataset.repo_id=${HF_USER}/eval_so101 --dataset.push_to_hub=false
 
-
+//smolvla 推理测试
+export HF_ENDPOINT=https://hf-mirror.com
+python -m lerobot.scripts.lerobot_record \
+    --robot.disable_torque_on_disconnect=true \
+    --robot.type=so101_follower \
+    --robot.port=/dev/so101_follower_left \
+    --robot.id=R20191207 \
+    --robot.cameras="{ 'camera1': {'type': 'opencv', 'index_or_path': /dev/hand_camera, 'width': 640, 'height': 480, 'fps': 20},'camera2': {'type': 'opencv', 'index_or_path': /dev/fixed_camera, 'width': 640, 'height': 480, 'fps': 30}}" \
+    --teleop.type=so101_leader \
+    --teleop.port=/dev/so101_leader_left \
+    --teleop.id=R20241230 \
+    --display_data=true \
+    --dataset.repo_id=${HF_USER}/so101_test \
+    --dataset.num_episodes=10 --dataset.episode_time_s=20 \
+    --dataset.single_task="Grab the orange ball" \
+    --policy.path=outputs/checkpoints_smolvla/last/pretrained_model \
+    --policy.device=cuda \
+    --dataset.repo_id=${HF_USER}/eval_so101 --dataset.push_to_hub=false
+    
 
 export PYTHONPATH=/home/ahpc/RL/percipio
 export LD_LIBRARY_PATH=/home/ahpc/RL/percipio
