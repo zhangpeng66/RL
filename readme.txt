@@ -134,18 +134,6 @@ python -m lerobot.scripts.lerobot_train  \
   --wandb.enable=false \
   --config_path=outputs/train/act_so101_test/checkpoints/last/pretrained_model
 
-// SmolVLA训练
-//安装依赖包
-pip install -e ".[smolvla]"
-//开始训练
-python -m lerobot.scripts.lerobot_train \
-  --dataset.repo_id=${HF_USER}/so101_test_merged --policy.push_to_hub=false \
-  --policy.path=lerobot/smolvla_base --policy.device=cuda \
-  --output_dir=outputs/train/smolvla_test \
-  --job_name=smolvla_test \
-  --batch_size=32 --steps=100000 \
-  --wandb.enable=false --rename_map='{"observation.images.handeye": "observation.images.camera1", "observation.images.fixed": "observation.images.camera2"}'
-
 //推理测试
 export HF_USER=zp_robot
 cd RL/lerobot/src
@@ -167,6 +155,28 @@ python -m lerobot.scripts.lerobot_record \
     --policy.path=outputs/checkpoints_act/last/pretrained_model \
     --policy.device=cuda \
     --dataset.repo_id=${HF_USER}/eval_so101 --dataset.push_to_hub=false
+
+
+
+// SmolVLA训练
+//安装依赖包
+pip install -e ".[smolvla]"
+//开始训练
+python -m lerobot.scripts.lerobot_train \
+  --dataset.repo_id=${HF_USER}/so101_test_merged --policy.push_to_hub=false \
+  --policy.path=lerobot/smolvla_base --policy.device=cuda \
+  --output_dir=outputs/train/smolvla_test \
+  --job_name=smolvla_test \
+  --batch_size=32 --steps=100000 \
+  --wandb.enable=false --rename_map='{"observation.images.fixed": "observation.images.camera1", "observation.images.handeye": "observation.images.camera2"}'
+//训练不带基础模型
+python -m lerobot.scripts.lerobot_train \
+  --dataset.repo_id=${HF_USER}/so101_test_merged --policy.push_to_hub=false \
+  --policy.type=smolvla --policy.device=cuda \
+  --output_dir=outputs/train/smolvla_nobasemodel \
+  --job_name=smolvla_nobasemodel \
+  --batch_size=32 --steps=100000 \
+  --wandb.enable=false --rename_map='{"observation.images.fixed": "observation.images.camera1", "observation.images.handeye": "observation.images.camera2"}'
 
 //smolvla 推理测试
 export HF_ENDPOINT=https://hf-mirror.com

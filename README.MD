@@ -213,6 +213,7 @@ $$
 $$
   V(s)=\underbrace{R(s)}_{\text {即时奖励}}+\underbrace{\gamma \sum_{s^{\prime} \in S} p\left(s^{\prime} \mid s\right) V\left(s^{\prime}\right)}_{\text {未来奖励的折扣总和}}
 $$
+![alt text](image-11.png)
 其中，
 * $s'$ 可以看成未来的所有状态，
 * $p(s'|s)$  是指从当前状态转移到未来状态的概率。
@@ -220,14 +221,46 @@ $$
 * $\gamma \sum_{s^{\prime} \in S} p\left(s^{\prime} \mid s\right) V\left(s^{\prime}\right)$ 可以看成未来奖励的折扣总和（discounted sum of future reward）。
 
 贝尔曼方程定义了当前状态与未来状态之间的关系。**未来奖励的折扣总和加上即时奖励，就组成了贝尔曼方程**。
+贝尔曼方程的推导过程如下：
+
+$$
+  \begin{aligned}
+    V(s)&=\mathbb{E}\left[G_{t} \mid s_{t}=s\right]\\
+    &=\mathbb{E}\left[r_{t+1}+\gamma r_{t+2}+\gamma^{2} r_{t+3}+\ldots \mid s_{t}=s\right]  \\
+    &=\mathbb{E}\left[r_{t+1}|s_t=s\right] +\gamma \mathbb{E}\left[r_{t+2}+\gamma r_{t+3}+\gamma^{2} r_{t+4}+\ldots \mid s_{t}=s\right]\\
+    &=R(s)+\gamma \mathbb{E}[G_{t+1}|s_t=s] \\
+    &=R(s)+\gamma \mathbb{E}[V(s_{t+1})|s_t=s]\\
+    &=R(s)+\gamma \sum_{s^{\prime} \in S} p\left(s^{\prime} \mid s\right) V\left(s^{\prime}\right)
+    \end{aligned}  
+$$
+
+当我们把贝尔曼方程写成矩阵形式后，可以直接求解：
+$$
+  \begin{aligned}
+    \boldsymbol{V} &= \boldsymbol{\boldsymbol{R}}+ \gamma \boldsymbol{P}\boldsymbol{V} \\
+    \boldsymbol{I}\boldsymbol{V} &= \boldsymbol{R}+ \gamma \boldsymbol{P}\boldsymbol{V} \\
+    (\boldsymbol{I}-\gamma \boldsymbol{P})\boldsymbol{V}&=\boldsymbol{R} \\
+    \boldsymbol{V}&=(\boldsymbol{I}-\gamma \boldsymbol{P})^{-1}\boldsymbol{R}
+    \end{aligned}
+$$
+
+我们可以直接得到**解析解（analytic solution）**：
+$$
+  \boldsymbol{V}=(\boldsymbol{I}-\gamma \boldsymbol{P})^{-1} \boldsymbol{R}
+$$
+我们可以通过矩阵求逆把 $\boldsymbol{V}$ 的价值直接求出来。但是一个问题是这个矩阵求逆的过程的复杂度是 $O(N^3)$。所以当状态非常多的时候，比如从10个状态到1000个状态，或者到100万个状态，当我们有100万个状态的时候，状态转移矩阵就会是一个100万乘100万的矩阵，对这样一个大矩阵求逆是非常困难的。所以这种通过解析解去求解的方法只适用于很小量的马尔可夫奖励过程。
+另一种方法是**迭代求解**
+$$
+\boldsymbol{V_{k+1}} = \boldsymbol{\boldsymbol{R_{\pi}}}+ \gamma \boldsymbol{P_{\pi}}\boldsymbol{V_k} 
+$$
 #### 状态价值函数与动作价值函数（Q函数）
 马尔可夫决策过程中的状态价值函数可定义为
 $$
 V_{\pi}(s)=\mathbb{E}_{\pi}\left[G_{t} \mid s_{t}=s\right] \tag{2.3}
 $$
-可以理解为**在某个状态下回报的期望**
+可以理解为**在某个状态下回报的期望(mean均值)**
 
-这里我们另外引入了一个 **Q 函数（Q-function）**。Q 函数也被称为**动作价值函数（action-value function）**。Q 函数定义的是**在某一个状态采取某一个动作，它有可能得到的回报的一个期望**，即
+这里我们另外引入了一个 **Q 函数（Q-function）**。Q 函数也被称为**动作价值函数（action-value function）**。Q 函数定义的是**在某一个状态采取某一个动作，它有可能得到的回报的一个期望(mean均值)**，即
 $$
 Q_{\pi}(s, a)=\mathbb{E}_{\pi}\left[G_{t} \mid s_{t}=s, a_{t}=a\right] \tag{2.4}
 $$
@@ -237,6 +270,7 @@ $$
 V_{\pi}(s)=\sum_{a \in A} \pi(a \mid s) Q_{\pi}(s, a)
 \tag{2.5}
 $$
+
 #### 贝尔曼期望方程
 
 我们可以把状态价值函数和 Q 函数拆解成两个部分：即时奖励和后续状态的折扣价值（discounted value of successor state）。
@@ -263,13 +297,73 @@ $$
   V_{\pi}(s)=\max _{a \in A} Q_{\pi}(s, a)
 $$
 贝尔曼最优方程表明：最佳策略下的**一个状态的价值必须等于在这个状态下采取最好动作得到的回报的期望**。 当马尔可夫决策过程满足贝尔曼最优方程的时候，整个马尔可夫决策过程已经达到最佳的状态。
+#### 策略迭代 
 
+策略迭代由两个步骤组成：**策略评估（policy evaluate）和策略改进（policy improvement）**。如图 2.21a 所示，**第一个步骤是策略评估**，当前我们在优化策略 $\pi$，当取得最佳价值函数后，我们可以通过对 Q 函数进行最大化来得到最佳策略(greedy 算法)：
+$$
+  \pi^{*}(a \mid s)=\left\{\begin{array}{ll}
+  1, &  a=\underset{a \in A}{\arg \max} Q^{*}(s, a) \\
+  0, & \text {其他 }
+  \end{array}\right.
+$$
+我们先保证这个策略不变，然后估计它的价值，即给定当前的最优策略函数$V^{t}_{\pi_{i}}\left(s^{\prime}\right)$来估计下一时刻状态价值函数$V^{t+1}_{\pi_{i}}(s)$。
+$$
+  V^{t+1}_{\pi_{i}}(s)=\sum_{a \in A} \pi(a \mid s)\left(R(s, a)+\gamma \sum_{s^{\prime} \in S} p\left(s^{\prime} \mid s, a\right) V^{t}_{\pi_{i}}\left(s^{\prime}\right)\right) \tag{2.18} 
+$$
+这里再来看一下**第二个步骤————策略改进**，看我们是如何改进策略的。得到状态价值函数后，我们就可以通过奖励函数以及状态转移函数来计算 Q 函数：
+$$
+  Q_{\pi_{i}}(s, a)=R(s, a)+\gamma \sum_{s^{\prime} \in S} p\left(s^{\prime} \mid s, a\right) V_{\pi_{i}}\left(s^{\prime}\right)
+$$
+
+对于每个状态，策略$\pi_{i}$改进会得到它的新一轮的策略$\pi_{i+1}$，对于每个状态，我们取使它得到最大值的动作，即
+$$
+  \pi_{i+1}(s)=\underset{a}{\arg \max } ~Q_{\pi_{i}}(s, a)
+$$
+
+如图 2.22 所示，我们可以把 Q 函数看成一个 **Q表格（Q-table）**：横轴是它的所有状态，纵轴是它的可能的动作。如果我们得到了 Q 函数，Q表格也就得到了。对于某个状态，每一列里面我们会取最大的值，最大值对应的动作就是它现在应该采取的动作。所以 arg max 操作是指在每个状态里面采取一个动作，这个动作是能使这一列的 Q 函数值最大化的动作。
+
+
+
+ <div align=center>
+<img width="550" src="easy-rl/docs/img/ch2/2.46.png"/>
+</div>
+ <div align=center>图 2.22 Q表格</div>
+
+所以如图 2.23b 所示，在策略迭代里面，在初始化的时候，我们有一个初始化的状态价值函数 $V$ 和 策略$\pi$ ，然后在这两个步骤之间迭代。图 2.23b 上面的线就是我们当前状态价值函数的值，下面的线是策略的值。策略迭代的过程与踢皮球一样。我们先给定当前已有的策略函数，计算它的状态价值函数。算出状态价值函数后，我们会得到一个 Q 函数。我们对Q 函数采取贪心的策略，这样就像踢皮球，“踢”回策略。然后进一步改进策略，得到一个改进的策略后，它还不是最佳的策略，我们再进行策略评估，又会得到一个新的价值函数。基于这个新的价值函数再进行 Q 函数的最大化，这样逐渐迭代，状态价值函数和策略就会收敛。
+
+
+<div align=center>
+<img width="550" src="easy-rl/docs/img/ch2/2.21.png"/>
+</div>
+ <div align=center>图 2.23 策略迭代</div>
+
+
+#### 价值迭代 
+
+第一步策略更新(policy update)
+$$
+  \pi_{i+1}(s)=\underset{a}{\arg \max }\sum_{a \in A} \pi(a \mid s)\underbrace{\left(R(s, a)+\gamma \sum_{s^{\prime} \in S} p\left(s^{\prime} \mid s, a\right) V_i\left(s^{\prime}\right)\right)}_{{Q_i(s,a)}}
+$$
+最优的策略解决方法（greedy 算法）
+$$
+  \pi_{i+1}(a \mid s)=\left\{\begin{array}{ll}
+  1, &  a=\underset{a \in A}{\arg \max} Q_{k}(s, a) \\
+  0, & \text {其他 }
+  \end{array}\right.
+$$
+第二步值更新（value update）
+$$
+  V_{i+1}(s)=\sum_{a \in A} \pi_{i+1}(a \mid s)\underbrace{\left(R(s, a)+\gamma \sum_{s^{\prime} \in S} p\left(s^{\prime} \mid s, a\right) V_i\left(s^{\prime}\right)\right)}_{{Q_i(s,a)}}
+$$
 #### 马尔可夫决策过程中的预测和控制总结
 总结如表 2.1 所示，我们使用动态规划算法来解马尔可夫决策过程里面的预测和控制，并且采取不同的贝尔曼方程。对于预测问题，即策略评估的问题，我们不停地执行贝尔曼期望方程，这样就可以估计出给定的策略，然后得到价值函数。对于控制问题，如果我们采取的算法是策略迭代，使用的就是贝尔曼期望方程；如果我们采取的算法是价值迭代，使用的就是贝尔曼最优方程。
 ![easy-rl/docs/img/ch2/table_1.png](easy-rl/docs/img/ch2/table_1.png)
 
+策略迭代与价值迭代过程如下：
+![alt text](image-10.png)
+
 #### 有模型与免模型的区别 
-当马尔可夫决策过程的模型未知或者模型很大时，我们可以使用免模型强化学习的方法。免模型强化学习方法没有获取环境的状态转移和奖励函数，而是让智能体与环境进行交互，采集大量的轨迹数据，智能体从轨迹中获取信息来改进策略，从而获得更多的奖励。
+当马尔可夫决策过程的模型未知或者模型很大时，我们可以使用免模型强化学习的方法。免模型强化学习方法没有获取环境的状态转移和奖励函数，而是让智能体与环境进行交互，**采集大量的轨迹数据**，智能体从轨迹中获取信息来改进策略，从而获得更多的奖励。
 
 #### Q表格
 在多次尝试和熊打交道之后，我们就可以对熊的不同的状态做出判断，用状态动作价值来表达在某个状态下某个动作的好坏。后续能够获得多少总奖励。如果可以预估未来的总奖励的大小，我们就知道在当前的状态下选择哪个动作价值更高。
@@ -290,61 +384,210 @@ $$
 V_{\pi}(s)=\mathbb{E}_{\tau \sim \pi}\left[G_{t} \mid  s_{t}=s\right]
 $$
 
-蒙特卡洛仿真是指我们可以采样大量的轨迹，计算所有轨迹的真实回报，然后计算平均值。蒙特卡洛方法使用经验平均回报（empirical mean return）的方法来估计，它不需要马尔可夫决策过程的状态转移函数和奖励函数，并且不需要像动态规划那样用自举的方法。此外，蒙特卡洛方法有一定的局限性，它只能用在有终止的马尔可夫决策过程中。
-##### 时序差分方法
+蒙特卡洛仿真是指我们可以采样大量的轨迹，计算所有轨迹的真实回报，然后计算平均值。**蒙特卡洛方法使用经验平均回报（empirical mean return）的方法来估计**，它不需要马尔可夫决策过程的状态转移函数和奖励函数，并且不需要像动态规划那样用自举的方法。此外，蒙特卡洛方法有一定的局限性，它只能用在有终止的马尔可夫决策过程中。
+假设现在有样本 $x_1,x_2,\cdots, x_t$，我们可以把**经验均值（empirical mean）转换成增量均值（incremental mean）的形式**：
+$$
+\begin{aligned}
+	\mu_{t} &=\frac{1}{t} \sum_{j=1}^{t} x_{j} \\
+	&=\frac{1}{t}\left(x_{t}+\sum_{j=1}^{t-1} x_{j}\right) \\
+	&=\frac{1}{t}\left(x_{t}+(t-1) \mu_{t-1}\right) \\
+	&=\frac{1}{t}\left(x_{t}+t \mu_{t-1}-\mu_{t-1}\right) \\
+	&=\mu_{t-1}+\frac{1}{t}\left(x_{t}-\mu_{t-1}\right) 
+	\end{aligned}
+$$
+通过这种转换，我们就可以把上一时刻的平均值与现在时刻的平均值建立联系，即
+$$
+	\mu_t = \mu_{t-1}+\frac{1}{t}(x_t-\mu_{t-1})
+$$
+其中，$x_t- \mu_{t-1}$ 是残差，$\frac{1}{t}$ 类似于学习率（learning rate）。
+当我们得到 $x_t$时，就可以用上一时刻的值来更新现在的值。
+###### RM算法
+Robbins-Monro (RM)算法，让$g(w) =0$ ,$a_k$是学习率
+![alt text](image-12.png)
+我们可以把蒙特卡洛方法更新的方法写成增量式蒙特卡洛（incremental MC）方法。我们采集数据，得到一个新的轨迹 $(s_1,a_1,r_1,\dots,s_t)$。对于这个轨迹，我们采用增量的方法进行更新：
+
+
+$$
+\begin{array}{l}
+N\left(s_{t}\right) \leftarrow N\left(s_{t}\right)+1 \\
+V\left(s_{t}\right) = V\left(s_{t}\right)+\frac{1}{N\left(s_{t}\right)}\left(G_{t}-V\left(s_{t}\right)\right)
+\end{array}	
+$$
+
+我们可以直接把 $\frac{1}{N(s_t)}$ 变成 $\alpha$（学习率），即
+$$
+	V\left(s_{t}\right) = V\left(s_{t}\right)+\alpha\left(G_{t}-V\left(s_{t}\right)\right)
+$$
+##### 时序差分方法(基于状态值state values)
 **时序差分方法**的目的是对于某个给定的策略 $\pi$，在线（online）地算出它的价值函数 $V_{\pi}$，即一步一步地（step-by-step）算。
 最简单的算法是**一步时序差分（one-step TD）**，即TD(0)。每往前走一步，就做一步自举，用得到的估计回报（estimated return）$r_{t+1}+\gamma V(s_{t+1})$ 来更新上一时刻的值 $V(s_t)$：
 $$
-  V\left(s_{t}\right) \leftarrow V\left(s_{t}\right)+\alpha\left(r_{t+1}+\gamma V\left(s_{t+1}\right)-V\left(s_{t}\right)\right) \tag{3.1}
+  V_{t+1}\left(s_{t}\right) = V_t\left(s_{t}\right)+\alpha_t\left(r_{t+1}+\gamma V_t\left(s_{t+1}\right)-V\left(s_{t}\right)\right) \tag{3.1}  \\
+  V_{t+1} = V_{t}  \text{   for all } s \neq s_t
 $$
-估计回报 $r_{t+1}+\gamma V(s_{t+1})$ 被称为**时序差分目标（TD target）**，
-时序差分目标是带衰减的未来奖励的总和。时序差分目标由两部分组成：
-
-（1）我们走了某一步后得到的实际奖励$r_{t+1}$；
-
-（2）我们利用了自举的方法，通过之前的估计来估计 $V(s_{t+1})$  ，并且加了折扣因子，即 $\gamma V(s_{t+1})$。
-
-
-时序差分目标是估计有两个原因：
-
-（1）时序差分方法对期望值进行采样；
-
-（2）时序差分方法使用当前估计的 $V$ 而不是真实的 $V_{\pi}$。
+估计回报 $G_t=r_{t+1}+\gamma V(s_{t+1})$ 被称为**时序差分目标（TD target）**，
 
 **时序差分误差（TD error）** $\delta=r_{t+1}+\gamma V(s_{t+1})-V(s_t)$。
 类比增量式蒙特卡洛方法，给定一个回合 $i$，我们可以更新 $V(s_t)$ 来逼近真实的回报 $G_t$，具体更新公式为
 $$
-V\left(s_{t}\right) \leftarrow V\left(s_{t}\right)+\alpha\left(G_{i, t}-V\left(s_{t}\right)\right)
+V\left(s_{t}\right) = V\left(s_{t}\right)+\alpha\left(G_{i, t}-V\left(s_{t}\right)\right)
 $$
-式(3.1)体现了强化的概念。
+另一种表达方法
+![alt text](image-13.png)
+###### n步时序差分
+
+这样我们就可以通过步数来调整算法需要的实际奖励和自举。
+
+$$
+\begin{array}{lcl}
+n=1\text{（TD）} &G_{t}^{(1)}&=r_{t+1}+\gamma V\left(s_{t+1}\right) \\
+n=2 &G_{t}^{(2)}&= r_{t+1}+\gamma r_{t+2}+\gamma^{2} V\left(s_{t+2}\right) \\
+& &\vdots \\
+n=\infty\text{（MC）} &G_{t}^{\infty}&=r_{t+1}+\gamma r_{t+2}+\ldots+\gamma^{T-t-1} r_{T}
+\end{array} \tag{3.2}
+$$
+
+如式(3.2)所示，通过调整步数，可以进行蒙特卡洛方法和时序差分方法之间的权衡。如果 $n=\infty$， 即整个游戏结束后，再进行更新，时序差分方法就变成了蒙特卡洛方法。
+
+$n$步时序差分可写为
+
+$$
+G_{t}^{n}=r_{t+1}+\gamma r_{t+2}+\ldots+\gamma^{n-1} r_{t+n}+\gamma^{n} V\left(s_{t+n}\right)
+$$
 
 #### 免模型控制  
 
-在我们不知道马尔可夫决策过程模型的情况下，如何优化价值函数，得到最佳的策略呢？我们可以把策略迭代进行广义的推广，使它能够兼容蒙特卡洛和时序差分的方法，即带有蒙特卡洛方法和时序差分方法的**广义策略迭代（generalized policy iteration，GPI）**。
+##### 基本蒙特卡洛算法
 
-如图 3.23 所示，策略迭代由两个步骤组成。第一，我们根据给定的当前策略 $\pi$ 来估计价值函数；第二，得到估计的价值函数后，我们通过贪心的方法来改进策略，即
+策略迭代由两个步骤组成。第一、策略评估；
 $$
-\pi^{'}=\text{贪心函数}(V_{\pi})
+q_{\pi}(s,a) = E(G_t | s_t = s,a_t =a) \approx \frac{1}{n} \sum_{i =0}^n(g^i_{\pi_k}(s,a)) 
+$$
+第二，策略改进，即
+$$
+  \pi_{k+1}(a \mid s)=\left\{\begin{array}{ll}
+  1, &  a=a^*_k \\
+  0, &  a \neq a^*_k
+  \end{array}\right.
 $$
 
 这两个步骤是一个互相迭代的过程。
 
 $$
-\pi_{i+1}(s)=\underset{a}{\arg \max } Q_{\pi_{i}}(s, a) \tag{3.3}
+  \pi_{i+1}(s)=\underset{\pi}{\arg \max }\sum_{a \in A} \pi(a \mid s)\underbrace{\left(\sum_{r}p(r|s,a)r+\gamma \sum_{s^{\prime} \in S} p\left(s^{\prime} \mid s, a\right) V_i\left(s^{\prime}\right)\right)}_{{q_{\pi}(s,a)}}
 $$
 
-我们可以计算出策略 $\pi$ 的动作价值函数，并且可以根据式（3.3）来计算针对状态 $s \in S$ 的新策略 $\pi_{i+1}$。但得到状态价值函数后，我们并不知道奖励函数 $R(s,a)$ 和状态转移 $P(s'|s,a)$，所以就无法估计 Q 函数
+![alt text](image-14.png)
+
+##### 蒙特卡洛算法探索性开始
+假设每一个回合都有一个探索性开始，探索性开始保证所有的状态和动作都在无限步的执行后能被采样到，这样才能很好地进行估计。
+![alt text](image-16.png)
+数据将被充分利用，具体过程如下：
+![alt text](image-15.png)
+
+##### 蒙特卡洛算法和特别贪心算法
+当我们使用蒙特卡洛方法和 $\varepsilon$-贪心探索的时候，可以确保价值函数是单调的、改进的。对于任何 $\varepsilon$-贪心策略 $\pi$，关于 $Q_{\pi}$ 的 $\varepsilon$-贪心策略 $\pi^{\prime}$ 都是一个改进，即 $V_{\pi}(s) \leqslant V_{\pi^{\prime}}(s)$，证明过程如下：
+
 $$
-Q_{\pi_{i}}(s, a)=R(s, a)+\gamma \sum_{s^{\prime} \in S} P\left(s^{\prime} \mid s, a\right) V_{\pi_{i}}\left(s^{\prime}\right)
+\begin{aligned}
+	Q_{\pi}\left(s, \pi^{\prime}(s)\right) &=\sum_{a \in A} \pi^{\prime}(a \mid s) Q_{\pi}(s, a) \\
+	&=\frac{\varepsilon}{|A|} \sum_{a \in A} Q_{\pi}(s, a)+(1-\varepsilon) \max _{a} Q_{\pi}(s, a) \\
+	& \geqslant \frac{\varepsilon}{|A|} \sum_{a \in A} Q_{\pi}(s, a)+(1-\varepsilon) \sum_{a \in A} \frac{\pi(a \mid s)-\frac{\varepsilon}{|A|}}{1-\varepsilon} Q_{\pi}(s, a) \\
+	&=\sum_{a \in A} \pi(a \mid s) Q_{\pi}(s, a)=V_{\pi}(s)
+	\end{aligned}
 $$
-![alt text](easy-rl/docs/img/ch3/model_free_control_1.png)
+
+基于 $\varepsilon$-贪心探索的蒙特卡洛方法如下：
+![alt text](image-17.png)
+
+与蒙特卡洛方法相比，时序差分方法有如下几个优势：低方差，能够在线学习，能够从不完整的序列中学习。
+所以我们可以把时序差分方法也放到控制循环（control loop）里面去估计Q表格，再采取 $\varepsilon$-贪心探索改进。这样就可以在回合没结束的时候更新已经采集到的状态价值。  
+
+>偏差（bias）：描述的是预测值（估计值）的期望与真实值之间的差距。偏差越高，越偏离真实数据，如图 3.27 第2行所示。
+方差（variance）：描述的是预测值的变化范围、离散程度，也就是离其期望值的距离。方差越高，数据的分布越分散，如图 3.27 右列所示。
+
+
+
+<div align=center>
+<img width="550" src="./easy-rl/docs/img/ch3/bias_variance.png"/>
+</div>
+<div align=center>图 3.27 偏差-方差</div>
+
+
+##### Sarsa：同策略时序差分控制（基于动作值函数 action values）
+Sarsa 所做出的改变很简单，它将原本时序差分方法更新 $V$ 的过程，变成了更新 $Q$，即
+$$
+  Q\left(s_{t}, a_{t}\right) \leftarrow Q\left(s_{t}, a_{t}\right)+\alpha\left[r_{t+1}+\gamma Q\left(s_{t+1}, a_{t+1}\right)-Q\left(s_{t}, a_{t}\right)\right] \tag{3.4}
+$$
+
+式(3.4)是指我们可以用下一步的 Q 值 $Q(s_{t+_1},a_{t+1})$ 来更新这一步的 Q 值 $Q(s_t,a_t)$ 。
+Sarsa 直接估计 Q 表格，得到 Q 表格后，就可以更新策略。
+
+为了理解式(3.4)，
+如图 3.28 所示，我们先把 $r_{t+1}+\gamma Q\left(s_{t+1}, a_{t+1}\right.)$ 当作目标值，即 $Q(s_t,a_t)$ 想要逼近的目标值。$r_{t+1}+\gamma Q\left(s_{t+1}, a_{t+1}\right.)$ 就是时序差分目标。
+
+<div align=center>
+<img width="550" src="easy-rl/docs/img/ch3/3.14.png"/>
+</div>
+<div align=center>图 3.28 时序差分单步更新</div>
+
+该算法由于每次更新值函数时需要知道当前的状态（state）、当前的动作（action）、奖励（reward）、下一步的状态（state）、下一步的动作（action），即 $(s_{t}, a_{t}, r_{t+1}, s_{t+1}, a_{t+1})$ 这几个值 ，因此得名 **Sarsa** 算法。它走了一步之后，获取了 $(s_{t}, a_{t}, r_{t+1}, s_{t+1}, a_{t+1})$  之后，就可以做一次更新。
+
+如图 3.29 所示，Sarsa 的更新公式可写为
+$$
+	Q(S, A) \leftarrow Q(S, A)+\alpha\left(R+\gamma Q\left(S^{\prime}, A^{\prime}\right)-Q(S, A)\right)
+$$
+
+Sarsa的更新公式与时序差分方法的公式是类似的。$S'$ 就是 $s_{t+1}$ 。我们就是用下一步的 Q 值 $Q(S',A')$ 来更新这一步的 Q 值 $Q(S,A)$，不断地强化每一个 Q 值。
+$$
+\begin{array}{lrl}
+	{n=1}\text {（Sarsa）} &Q_{t}^{1}&=r_{t+1}+\gamma Q\left(s_{t+1}, a_{t+1}\right) \\
+	n=2 &Q_{t}^{2}&=r_{t+1}+\gamma r_{t+2}+\gamma^{2} Q\left(s_{t+2}, a_{t+2}\right) \\
+	&&\vdots \\
+	n=\infty\text{（MC）} \quad &Q_{t}^{\infty}&=r_{t+1}+\gamma r_{t+2}+\ldots+\gamma^{T-t-1} r_{T}
+	\end{array} \tag{3.5}
+$$
+
+我们考虑 $n$ 步的回报（$n=1,2,\cdots,\infty$），如式(3.5)所示。Sarsa 属于单步更新算法，每执行一个动作，就会更新一次价值和策略。如果不进行单步更新，而是采取 $n$ 步更新或者回合更新，即在执行 $n$ 步之后再更新价值和策略，这样我们就得到了 **$n$ 步 Sarsa（$n$-step Sarsa）**。
 ##### Q学习：异策略时序差分控制 
 
-Q学习是一种**异策略（off-policy）**算法。如图 3.31 所示，异策略在学习的过程中，有两种不同的策略：**目标策略（target policy）**和**行为策略（behavior policy）**。
-**目标策略**是我们需要去学习的策略，一般用 $\pi$ 来表示。目标策略就像是在后方指挥战术的一个军师，它可以根据自己的经验来学习最优的策略，不需要去和环境交互。
-**行为策略**是探索环境的策略，一般用 $\mu$ 来表示。行为策略可以大胆地去探索到所有可能的轨迹，采集轨迹，采集数据，然后把采集到的数据“喂”给目标策略学习。而且“喂”给目标策略的数据中并不需要 $a_{t+1}$ ，而 Sarsa 是要有 $a_{t+1}$ 的。行为策略像是一个战士，可以在环境里面探索所有的动作、轨迹和经验，然后把这些经验交给目标策略去学习。比如目标策略优化的时候，Q学习不会管我们下一步去往哪里探索，它只选取奖励最大的策略。
+Sarsa 是一种**同策略**（on-policy）算法，它优化的是它实际执行的策略，它直接用下一步会执行的动作去优化 Q 表格。同策略在学习的过程中，只存在一种策略，它用一种策略去做动作的选取，也用一种策略去做优化。所以 Sarsa 知道它下一步的动作有可能会跑到悬崖那边去，它就会在优化自己的策略的时候，尽可能离悬崖远一点。这样子就会保证，它下一步哪怕是有随机动作，它也还是在安全区域内。
+
+Q学习是一种**异策略**（off-policy）算法。如图 3.31 所示，异策略在学习的过程中，有两种不同的策略：**目标策略（target policy）**和**行为策略（behavior policy）**。
+**目标策略**是我们需要去学习的策略，一般用 $\pi_T$ 来表示。目标策略就像是在后方指挥战术的一个军师，它可以根据自己的经验来学习最优的策略，不需要去和环境交互。
+**行为策略**是探索环境的策略，一般用 $\pi_b$ 来表示。行为策略可以大胆地去探索到所有可能的轨迹，采集轨迹，采集数据，然后把采集到的数据“喂”给目标策略学习。而且“喂”给目标策略的数据中并不需要 $a_{t+1}$ ，而 Sarsa 是要有 $a_{t+1}$ 的。行为策略像是一个战士，可以在环境里面探索所有的动作、轨迹和经验，然后把这些经验交给目标策略去学习。比如目标策略优化的时候，Q学习不会管我们下一步去往哪里探索，它只选取奖励最大的策略。
 ![alt text](easy-rl/docs/img/ch3/3.17.png)
 
+Q学习有两种策略：行为策略和目标策略。
+目标策略 $\pi_T$ 直接在 Q表格上使用geedy贪心策略，取它下一步能得到的所有状态，即
+$$
+	\pi\left(s_{t+1}\right)=\underset{a^{\prime}}{\arg \max}~ Q\left(s_{t+1}, a^{\prime}\right)
+$$
+行为策略 $\pi_b$ 可以是一个随机的策略，但我们采取 $\varepsilon$-贪心策略，让行为策略不至于是完全随机的，它是基于Q表格逐渐改进的。
+![alt text](image-18.png)
+我们可以构造 Q学习 目标，Q学习的下一个动作都是通过 arg max 操作选出来的，于是我们可得
+$$
+\begin{aligned}
+r_{t+1}+\gamma Q\left(s_{t+1}, A^{\prime}\right) &=r_{t+1}+\gamma Q\left(s_{t+1},\arg \max ~Q\left(s_{t+1}, a^{\prime}\right)\right) \\
+&=r_{t+1}+\gamma \max _{a^{\prime}} Q\left(s_{t+1}, a^{\prime}\right)
+\end{aligned}	
+$$
+
+##### 同策略与异策略的区别 
+
+总结一下同策略和异策略的区别。
+* Sarsa 是一个典型的同策略算法，它只用了一个策略 $\pi$，它不仅使用策略 $\pi$ 学习，还使用策略 $\pi$ 与环境交互产生经验。
+如果策略采用 $\varepsilon$-贪心算法，它需要兼顾探索，为了兼顾探索和利用，它训练的时候会显得有点“胆小”。它在解决悬崖行走问题的时候，会尽可能地远离悬崖边，确保哪怕自己不小心探索了一点儿，也还是在安全区域内。此外，因为采用的是 $\varepsilon$-贪心 算法，策略会不断改变（$\varepsilon$ 值会不断变小），所以策略不稳定。
+* Q学习是一个典型的异策略算法，它有两种策略————目标策略和行为策略，它分离了目标策略与行为策略。Q学习可以大胆地用行为策略探索得到的经验轨迹来优化目标策略，从而更有可能探索到最佳策略。行为策略可以采用 $\varepsilon$-贪心 算法，但目标策略采用的是贪心算法，它直接根据行为策略采集到的数据来采用最佳策略，所以 Q学习 不需要兼顾探索。
+
+* 我们比较一下 Q学习 和 Sarsa 的更新公式，就可以发现 Sarsa 并没有选取最大值的最大化操作。因此，Q学习是一个非常激进的方法，它希望每一步都获得最大的利益；Sarsa 则相对较为保守，它会选择一条相对安全的迭代路线。
+
+TD算法可以用通用表达方式：
+$$
+q_{t+1}(s,a) = q_t(s,a) + \alpha_t(s,a)(q_t(s,a)  - \bar{q}_t)
+$$
+其中$\bar{q}_t$有不同种表达方式，就有不同算法类型，且不同算法可以求解**贝尔曼方程BE和贝尔曼最优方程BOE**。
+![alt text](image-19.png)
 #### 策略梯度算法
 
 比如 $\theta$ 对应的模型很强，如果有一个回合 $\theta$ 很快就死掉了，因为这种情况很少会发生，所以该回合对应的轨迹 $\tau$ 的概率就很小；如果有一个回合 $\theta$ 一直没死，因为这种情况很可能发生，所以该回合对应的轨迹 $\tau$ 的概率就很大。我们可以根据 $\theta$ 算出某一个轨迹 $\tau$ 出现的概率，接下来计算 $\tau$ 的总奖励。总奖励使用 $\tau$ 出现的概率进行加权，对所有的 $\tau$ 进行求和，就是期望值。给定一个参数，我们可以计算期望值为
