@@ -188,7 +188,7 @@ python -m lerobot.scripts.lerobot_record \
     --robot.type=so101_follower \
     --robot.port=/dev/so101_follower_left \
     --robot.id=R20191207 \
-    --robot.cameras="{ 'camera1': {'type': 'opencv', 'index_or_path': /dev/hand_camera, 'width': 640, 'height': 480, 'fps': 20},'camera2': {'type': 'opencv', 'index_or_path': /dev/fixed_camera, 'width': 640, 'height': 480, 'fps': 30}}" \
+    --robot.cameras="{ 'camera2': {'type': 'opencv', 'index_or_path': /dev/hand_camera, 'width': 640, 'height': 480, 'fps': 20},'camera1': {'type': 'opencv', 'index_or_path': /dev/fixed_camera, 'width': 640, 'height': 480, 'fps': 30}}" \
     --teleop.type=so101_leader \
     --teleop.port=/dev/so101_leader_left \
     --teleop.id=R20241230 \
@@ -199,7 +199,23 @@ python -m lerobot.scripts.lerobot_record \
     --policy.path=outputs/checkpoints_smolvla/last/pretrained_model \
     --policy.device=cuda \
     --dataset.repo_id=${HF_USER}/eval_so101 --dataset.push_to_hub=false
-    
+//推理smol_nobasemodel 效果差点
+python -m lerobot.scripts.lerobot_record \
+    --robot.disable_torque_on_disconnect=true \
+    --robot.type=so101_follower \
+    --robot.port=/dev/so101_follower_left \
+    --robot.id=R20191207 \
+    --robot.cameras="{ 'handeye': {'type': 'opencv', 'index_or_path': /dev/hand_camera, 'width': 640, 'height': 480, 'fps': 20},'fixed': {'type': 'opencv', 'index_or_path': /dev/fixed_camera, 'width': 640, 'height': 480, 'fps': 30}}" \
+    --teleop.type=so101_leader \
+    --teleop.port=/dev/so101_leader_left \
+    --teleop.id=R20241230 \
+    --display_data=true \
+    --dataset.repo_id=${HF_USER}/so101_test \
+    --dataset.num_episodes=10 --dataset.episode_time_s=20 \
+    --dataset.single_task="Grab the orange ball" \
+    --policy.path=outputs/checkpoints_smolvla_nobasemodel/last/pretrained_model \
+    --policy.device=cuda \
+    --dataset.repo_id=${HF_USER}/eval_so101 --dataset.push_to_hub=false 
 //训练pi0
 //安装依赖包
 pip install -e ".[pi]"
