@@ -162,6 +162,8 @@ python -m lerobot.scripts.lerobot_record \
 //安装依赖包
 pip install -e ".[smolvla]"
 //开始训练
+export HF_ENDPOINT=https://hf-mirror.com
+
 python -m lerobot.scripts.lerobot_train \
   --dataset.repo_id=${HF_USER}/so101_test_merged --policy.push_to_hub=false \
   --policy.path=lerobot/smolvla_base --policy.device=cuda \
@@ -180,6 +182,7 @@ python -m lerobot.scripts.lerobot_train \
 
 //smolvla 推理测试
 export HF_ENDPOINT=https://hf-mirror.com
+
 python -m lerobot.scripts.lerobot_record \
     --robot.disable_torque_on_disconnect=true \
     --robot.type=so101_follower \
@@ -197,7 +200,32 @@ python -m lerobot.scripts.lerobot_record \
     --policy.device=cuda \
     --dataset.repo_id=${HF_USER}/eval_so101 --dataset.push_to_hub=false
     
+//训练pi0
+//安装依赖包
+pip install -e ".[pi]"
+//训练
+python -m lerobot.scripts.lerobot_train \
+    --dataset.repo_id=${HF_USER}/so101_test_merged  --policy.push_to_hub=false\
+    --policy.type=pi0  --wandb.enable=false\
+    --output_dir=outputs/train/pi0_test \
+    --job_name=pi0_training \
+    --policy.pretrained_path=lerobot/pi0_base \
+    --policy.compile_model=true \
+    --policy.gradient_checkpointing=true \
+    --policy.dtype=bfloat16 \
+    --steps=100000 \
+    --policy.device=cuda \
+    --batch_size=32
+
+
+
+
 
 export PYTHONPATH=/home/ahpc/RL/percipio
 export LD_LIBRARY_PATH=/home/ahpc/RL/percipio
 python3 zprobot_find_cameras.py  percipio
+
+//huggingface account
+zhangpeng
+Username:zp65
+secret:@Zpqazwsx65
