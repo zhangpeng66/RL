@@ -1,4 +1,5 @@
 //////////////以下脚本源码在RL/lerobot/src/lerobot/scripts文件夹里面
+  - 底座1号 -->肩部旋转部件2号 -->大臂3号 --> 小臂4号 --> 腕部5号 --> 夹爪6号
 //查看端口号
 python -m lerobot.scripts.lerobot_find_port
 sudo chmod 666 /dev/ttyACM0
@@ -67,6 +68,8 @@ python -m lerobot.scripts.lerobot_teleoperate \
     --display_data=true
 
 //录制数据
+//--dataset.episode_time_s=20 整个任务的周期，以秒为单位,默认为60，根据完成任务所需时间的长短来设置
+//dataset.reset_time_s 执行完任务后场景恢复到初始状态所需的时间，以秒为单位,默认为60，如果场景恢复很快，可以设置短一些，比如5秒。如果场景很复杂，涉及多件物品的复位，则需要设置得长一些
 python -m lerobot.scripts.lerobot_record \
     --robot.disable_torque_on_disconnect=true \
     --robot.type=so101_follower \
@@ -79,7 +82,7 @@ python -m lerobot.scripts.lerobot_record \
     --display_data=true \
     --dataset.repo_id=${HF_USER}/so101_test \
     --dataset.num_episodes=10 --dataset.episode_time_s=20 \
-    --dataset.single_task="Grab the orange ball"
+    --dataset.single_task="Grab the orange ball and put it in the blue box"
 
 //本地回放录制数据
 python -m lerobot.scripts.lerobot_dataset_viz \
@@ -96,8 +99,8 @@ Features: ['action', 'observation.state', 'observation.images.handeye', 'observa
 //推荐新手使用ACT，由 "--policy.type=act" 指定训练的策略为ACT。
 //其他可选择的策略：
 - act, Action Chunking Transformers
-- diffusion, Diffusion Policy
-- tdmpc, TDMPC Policy
+- diffusion, Diffusion Policy  看了bilibi视频说由于unet网络不如transformer
+- tdmpc, TDMPC Policy 目前lerobot只支持一个相机
 - vqbet, VQ-BeT
 - smolvla, SmolVLA
 - pi0, A Vision-Language-Action Flow Model for General Robot Control
@@ -151,7 +154,7 @@ python -m lerobot.scripts.lerobot_record \
     --display_data=true \
     --dataset.repo_id=${HF_USER}/so101_test \
     --dataset.num_episodes=10 --dataset.episode_time_s=20 \
-    --dataset.single_task="Grab the orange ball" \
+    --dataset.single_task="Grab the orange ball and put it in the blue box" \
     --policy.path=outputs/checkpoints_act/last/pretrained_model \
     --policy.device=cuda \
     --dataset.repo_id=${HF_USER}/eval_so101 --dataset.push_to_hub=false
@@ -195,7 +198,7 @@ python -m lerobot.scripts.lerobot_record \
     --display_data=true \
     --dataset.repo_id=${HF_USER}/so101_test \
     --dataset.num_episodes=10 --dataset.episode_time_s=20 \
-    --dataset.single_task="Grab the orange ball" \
+    --dataset.single_task="Grab the orange ball and put it in the blue box" \
     --policy.path=outputs/checkpoints_smolvla/last/pretrained_model \
     --policy.device=cuda \
     --dataset.repo_id=${HF_USER}/eval_so101 --dataset.push_to_hub=false
@@ -212,14 +215,26 @@ python -m lerobot.scripts.lerobot_record \
     --display_data=true \
     --dataset.repo_id=${HF_USER}/so101_test \
     --dataset.num_episodes=10 --dataset.episode_time_s=20 \
-    --dataset.single_task="Grab the orange ball" \
+    --dataset.single_task="Grab the orange ball and put it in the blue box" \
     --policy.path=outputs/checkpoints_smolvla_nobasemodel/last/pretrained_model \
     --policy.device=cuda \
     --dataset.repo_id=${HF_USER}/eval_so101 --dataset.push_to_hub=false 
+
 //训练pi0
 //安装依赖包
 pip install -e ".[pi]"
-//训练
+//pi0要的paligemma模型，需要授权下载前要登录一下，登入方法如下：
+输入python，然后输入：
+
+from huggingface_hub import login
+login()
+
+这里输入你hf_开头的huggingface的token，成功后，ctrl+z还是ctrl+d退出
+如果有红字提示说要执行git config --global credential.helper store，就执行一下yes
+
+如果遇到了CUDA out of memory，可以尝试把置为True(微调效果待评估)，num_learnable_params由3B降到578M，这样就可以在单张RTX4090(24GB)上微调，此时VRAM占用10950MB，
+//开始训练，减少batch_size没有效果 
+//erobot/pi0，是action expert 模型，paligemma-3b-mix-224 是pre-trained VLM全量模型需要显存>70G，目前不支持lora需要>22.5G
 python -m lerobot.scripts.lerobot_train \
     --dataset.repo_id=${HF_USER}/so101_test_merged  --policy.push_to_hub=false\
     --policy.type=pi0  --wandb.enable=false\
@@ -231,7 +246,8 @@ python -m lerobot.scripts.lerobot_train \
     --policy.dtype=bfloat16 \
     --steps=100000 \
     --policy.device=cuda \
-    --batch_size=32
+    --batch_size=1 
+
 
 
 
