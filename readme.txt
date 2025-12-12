@@ -70,6 +70,9 @@ python -m lerobot.scripts.lerobot_teleoperate \
 //录制数据
 //--dataset.episode_time_s=20 整个任务的周期，以秒为单位,默认为60，根据完成任务所需时间的长短来设置
 //dataset.reset_time_s 执行完任务后场景恢复到初始状态所需的时间，以秒为单位,默认为60，如果场景恢复很快，可以设置短一些，比如5秒。如果场景很复杂，涉及多件物品的复位，则需要设置得长一些
+//任务1:  Pick up the blue duck toy and put it in the blue box
+//任务2： Pick up the orange ball and put it in the blue box
+
 python -m lerobot.scripts.lerobot_record \
     --robot.disable_torque_on_disconnect=true \
     --robot.type=so101_follower \
@@ -82,7 +85,7 @@ python -m lerobot.scripts.lerobot_record \
     --display_data=true \
     --dataset.repo_id=${HF_USER}/so101_test \
     --dataset.num_episodes=10 --dataset.episode_time_s=20 \
-    --dataset.single_task="Grab the orange ball and put it in the blue box"
+    --dataset.single_task="Pick up the orange ball and put it in the blue box"
 
 //本地回放录制数据
 python -m lerobot.scripts.lerobot_dataset_viz \
@@ -102,7 +105,7 @@ Features: ['action', 'observation.state', 'observation.images.handeye', 'observa
 - diffusion, Diffusion Policy  看了bilibi视频说由于unet网络不如transformer
 - tdmpc, TDMPC Policy 目前lerobot只支持一个相机
 - vqbet, VQ-BeT
-- smolvla, SmolVLA
+- smolvla, SmolVLA  SmolVLA依赖多摄像头观测（如顶部、手腕、侧面视角）。若实际摄像头数量少于模型预期（例如模型需 3 个摄像头但实体仅安装 2 个），需通过占位补齐空缺。
 - pi0, A Vision-Language-Action Flow Model for General Robot Control
 - pi0fast
 - sac
@@ -154,7 +157,7 @@ python -m lerobot.scripts.lerobot_record \
     --display_data=true \
     --dataset.repo_id=${HF_USER}/so101_test \
     --dataset.num_episodes=10 --dataset.episode_time_s=20 \
-    --dataset.single_task="Grab the orange ball and put it in the blue box" \
+    --dataset.single_task="Pick up the orange ball and put it in the blue box" \
     --policy.path=outputs/checkpoints_act/last/pretrained_model \
     --policy.device=cuda \
     --dataset.repo_id=${HF_USER}/eval_so101 --dataset.push_to_hub=false
@@ -166,15 +169,16 @@ python -m lerobot.scripts.lerobot_record \
 pip install -e ".[smolvla]"
 //开始训练
 export HF_ENDPOINT=https://hf-mirror.com
-
+//主要使用smolvla基础模型需要按照他的摄像头分布camera1=top,camera2=side 
 python -m lerobot.scripts.lerobot_train \
   --dataset.repo_id=${HF_USER}/so101_test_merged --policy.push_to_hub=false \
   --policy.path=lerobot/smolvla_base --policy.device=cuda \
+  --policy.type=smolvla \
   --output_dir=outputs/train/smolvla_test \
   --job_name=smolvla_test \
   --batch_size=32 --steps=100000 \
   --wandb.enable=false --rename_map='{"observation.images.fixed": "observation.images.camera1", "observation.images.handeye": "observation.images.camera2"}'
-//训练不带基础模型
+//训练不带基础模型，经过测试效果比较差，原因不详
 python -m lerobot.scripts.lerobot_train \
   --dataset.repo_id=${HF_USER}/so101_test_merged --policy.push_to_hub=false \
   --policy.type=smolvla --policy.device=cuda \
@@ -183,6 +187,26 @@ python -m lerobot.scripts.lerobot_train \
   --batch_size=32 --steps=100000 \
   --wandb.enable=false --rename_map='{"observation.images.fixed": "observation.images.camera1", "observation.images.handeye": "observation.images.camera2"}'
 
+//smolvla多任务训练，利用任务A模型训练任务B,修改config_path 打印显示'pretrained_path': 'lerobot/smolvla_base',
+python -m lerobot.scripts.lerobot_train \
+  --dataset.repo_id=${HF_USER}/so101_dark_merged --policy.push_to_hub=false \
+  --policy.type=smolvla --policy.device=cuda \
+  --output_dir=outputs/train/smolvla_multitask \
+  --job_name=smolvla_multitask \
+  --batch_size=32 --steps=100000 \ 
+  --config_path=outputs/train/smolvla_test/checkpoints/last/pretrained_model \
+  --wandb.enable=false --rename_map='{"observation.images.fixed": "observation.images.camera1", "observation.images.handeye": "observation.images.camera2"}'
+//smolvla多任务训练，利用任务A模型训练任务B,修改policy.path,打印显示'pretrained_path': 'outputs/train/smolvla_test/checkpoints/last/pretrained_model',
+python -m lerobot.scripts.lerobot_train \
+  --dataset.repo_id=${HF_USER}/so101_dark_merged --policy.push_to_hub=false \
+  --policy.device=cuda \
+  --output_dir=outputs/train/smolvla_multitask_selfpolicy \
+  --job_name=smolvla_multitask_selfpolicy \
+  --batch_size=32 --steps=100000 \
+  --policy.path=outputs/train/smolvla_test/checkpoints/last/pretrained_model \
+  --wandb.enable=false --rename_map='{"observation.images.fixed": "observation.images.camera1", "observation.images.handeye": "observation.images.camera2"}'
+
+//总结：多任务训练使用config_path设置模型路径在ball和dark没有效果，正确使用policy.path，录数据的时候任务名字一定要表达好--dataset.single_task
 //smolvla 推理测试
 export HF_ENDPOINT=https://hf-mirror.com
 
@@ -198,7 +222,7 @@ python -m lerobot.scripts.lerobot_record \
     --display_data=true \
     --dataset.repo_id=${HF_USER}/so101_test \
     --dataset.num_episodes=10 --dataset.episode_time_s=20 \
-    --dataset.single_task="Grab the orange ball and put it in the blue box" \
+    --dataset.single_task="Pick up the orange ball and put it in the blue box" \
     --policy.path=outputs/checkpoints_smolvla/last/pretrained_model \
     --policy.device=cuda \
     --dataset.repo_id=${HF_USER}/eval_so101 --dataset.push_to_hub=false
@@ -215,7 +239,7 @@ python -m lerobot.scripts.lerobot_record \
     --display_data=true \
     --dataset.repo_id=${HF_USER}/so101_test \
     --dataset.num_episodes=10 --dataset.episode_time_s=20 \
-    --dataset.single_task="Grab the orange ball and put it in the blue box" \
+    --dataset.single_task="Pick up the orange ball and put it in the blue box" \
     --policy.path=outputs/checkpoints_smolvla_nobasemodel/last/pretrained_model \
     --policy.device=cuda \
     --dataset.repo_id=${HF_USER}/eval_so101 --dataset.push_to_hub=false 
