@@ -38,7 +38,7 @@ from lerobot.datasets.lerobot_dataset import LeRobotDataset
 
 def main():
     print("Loading dataset...")
-    dataset = LeRobotDataset("zp_robot/so101_dark1")
+    dataset = LeRobotDataset("zp_robot/so101_grab_ball_merged1")
     # LeRobot使用元数据系统来管理数据集的结构信息
     print(f"Original dataset: {dataset.meta.total_episodes} episodes, {dataset.meta.total_frames} frames ,repo_id:{dataset.meta.repo_id}")
     print(f"Features: {list(dataset.meta.features.keys())}")
@@ -54,10 +54,8 @@ def main():
 
     print("Tasks:")
     print(dataset.meta.tasks)
+    #print(dataset.meta.tasks.iloc[0].name)
 
-    print(dataset.meta.tasks.iloc[0].name)
-    dataset.meta.tasks.iloc[0].name = "Pick up the blue duck toy and put it in the blue box"
-    print(dataset.meta.tasks.iloc[0].name)
     print("Features:")
     print(dataset.meta.features)
 
@@ -65,13 +63,13 @@ def main():
     print(dataset.meta)
     
     # print("\n4. Merging datasets...")
-    # dataset1 = LeRobotDataset("zp_robot/so101_grab_dark1")
+    # dataset1 = LeRobotDataset("zp_robot/so101_grab_ball1")
     # print(f"Original dataset: {dataset1.meta.total_episodes} episodes, {dataset1.meta.total_frames} frames")
-    # dataset2 = LeRobotDataset("zp_robot/so101_test1119")
+    # dataset2 = LeRobotDataset("zp_robot/so101_grab_duck_wo_ball")
     # print(f"Original dataset: {dataset2.meta.total_episodes} episodes, {dataset2.meta.total_frames} frames")
     
     # print("\n1. Merging train and val splits back together...")
-    # merged = merge_datasets([dataset,dataset1], output_repo_id="zp_robot/so101_dark_merged")
+    # merged = merge_datasets([dataset,dataset1], output_repo_id="zp_robot/so101_grab_ball_merged1")
     # print(f"Merged dataset: {merged.meta.total_episodes} episodes")
 
     # print("\n Deleting episodes ...")
