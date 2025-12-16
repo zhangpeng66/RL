@@ -169,7 +169,7 @@ python -m lerobot.scripts.lerobot_record \
 pip install -e ".[smolvla]"
 //开始训练
 export HF_ENDPOINT=https://hf-mirror.com
-//主要使用smolvla基础模型需要按照他的摄像头分布camera1=top,camera2=side 
+//主要使用smolvla基础模型需要按照他的摄像头分布camera1=top,camera2=wrist,camera3=side 
 python -m lerobot.scripts.lerobot_train \
   --dataset.repo_id=${HF_USER}/so101_test_merged --policy.push_to_hub=false \
   --policy.path=lerobot/smolvla_base --policy.device=cuda \
@@ -237,7 +237,6 @@ python -m lerobot.scripts.lerobot_record \
     --teleop.port=/dev/so101_leader_left \
     --teleop.id=R20241230 \
     --display_data=true \
-    --dataset.repo_id=${HF_USER}/so101_test \
     --dataset.num_episodes=10 --dataset.episode_time_s=20 \
     --dataset.single_task="Pick up the orange ball and put it in the blue box" \
     --policy.path=outputs/checkpoints_smolvla_nobasemodel/last/pretrained_model \
