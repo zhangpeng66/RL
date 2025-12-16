@@ -220,10 +220,9 @@ python -m lerobot.scripts.lerobot_record \
     --teleop.port=/dev/so101_leader_left \
     --teleop.id=R20241230 \
     --display_data=true \
-    --dataset.repo_id=${HF_USER}/so101_test \
     --dataset.num_episodes=10 --dataset.episode_time_s=20 \
     --dataset.single_task="Pick up the orange ball and put it in the blue box" \
-    --policy.path=outputs/checkpoints_smolvla/last/pretrained_model \
+    --policy.path=outputs/smolvla_grab_ball1/checkpoints/last/pretrained_model \
     --policy.device=cuda \
     --dataset.repo_id=${HF_USER}/eval_so101 --dataset.push_to_hub=false
 //推理smol_nobasemodel 效果差点
