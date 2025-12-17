@@ -67,7 +67,7 @@ python -m lerobot.scripts.lerobot_teleoperate \
     --teleop.id=R20241230 \
     --display_data=true
 
-//录制数据
+//录制数据(任务名字不能混淆,需要统一)
 //--dataset.episode_time_s=20 整个任务的周期，以秒为单位,默认为60，根据完成任务所需时间的长短来设置
 //dataset.reset_time_s 执行完任务后场景恢复到初始状态所需的时间，以秒为单位,默认为60，如果场景恢复很快，可以设置短一些，比如5秒。如果场景很复杂，涉及多件物品的复位，则需要设置得长一些
 //任务1:  Pick up the blue duck toy and put it in the blue box
@@ -125,6 +125,24 @@ python -m lerobot.scripts.lerobot_train  \
   --batch_size=16 \
   --num_workers=4
 
+
+//训练diffusion需要更改配置(https://github.com/huggingface/lerobot/issues/2506)
+python -m lerobot.scripts.lerobot_train  \
+  --dataset.repo_id=${HF_USER}//so101_grab_ball_merged1 \
+  --policy.type=diffusion \
+  --output_dir=outputs/train/diffusion_so101_test \
+  --job_name=diffusion_so101_test \
+  --policy.device=cuda \
+  --policy.push_to_hub=false \
+  --policy.num_inference_steps=10 \
+  --policy.drop_n_last_frames=2 \
+  --policy.use_separate_rgb_encoder_per_camera=true \
+  --policy.vision_backbone=resnet34 \
+  --policy.crop_shape=null \
+  --dataset.image_transforms.enable=true \
+  --wandb.enable=false \
+  --batch_size=1 \
+  --num_workers=4
 //继续训练
 python -m lerobot.scripts.lerobot_train \
   --config_path=outputs/train/act_so101_diffusion/checkpoints/last/pretrained_model/train_config.json \
