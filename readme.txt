@@ -173,10 +173,9 @@ python -m lerobot.scripts.lerobot_record \
     --teleop.port=/dev/so101_leader_left \
     --teleop.id=R20241230 \
     --display_data=true \
-    --dataset.repo_id=${HF_USER}/so101_test \
     --dataset.num_episodes=10 --dataset.episode_time_s=20 \
     --dataset.single_task="Pick up the orange ball and put it in the blue box" \
-    --policy.path=outputs/checkpoints_act/last/pretrained_model \
+    --policy.path=outputs/act/checkpoints/last/pretrained_model \
     --policy.device=cuda \
     --dataset.repo_id=${HF_USER}/eval_so101 --dataset.push_to_hub=false
 
@@ -233,7 +232,7 @@ python -m lerobot.scripts.lerobot_record \
     --robot.type=so101_follower \
     --robot.port=/dev/so101_follower_left \
     --robot.id=R20191207 \
-    --robot.cameras="{ 'camera2': {'type': 'opencv', 'index_or_path': /dev/hand_camera, 'width': 640, 'height': 480, 'fps': 20},'camera1': {'type': 'opencv', 'index_or_path': /dev/fixed_camera, 'width': 640, 'height': 480, 'fps': 30}}" \
+    --robot.cameras="{ 'camera1': {'type': 'opencv', 'index_or_path': /dev/fixed_camera, 'width': 640, 'height': 480, 'fps': 30},'camera2': {'type': 'opencv', 'index_or_path': /dev/hand_camera, 'width': 640, 'height': 480, 'fps': 20}}" \
     --teleop.type=so101_leader \
     --teleop.port=/dev/so101_leader_left \
     --teleop.id=R20241230 \
@@ -260,6 +259,26 @@ python -m lerobot.scripts.lerobot_record \
     --policy.device=cuda \
     --dataset.repo_id=${HF_USER}/eval_so101 --dataset.push_to_hub=false 
 
+//异步推理
+//运行服务端
+python -m lerobot.async_inference.policy_server \
+     --host=127.0.0.1 \
+     --port=8080
+//运行客户端,在模型的配置文件config.json和train_config.json中需要注明训练的数据集的repo_id==>"repo_id": "zp_robot/so101_grab_ball_merged1",
+python -m lerobot.async_inference.robot_client \
+    --server_address=127.0.0.1:8080 \
+    --robot.type=so101_follower \
+    --robot.port=/dev/so101_follower_left \
+    --robot.id=R20191207 \
+    --robot.cameras="{ 'camera1': {'type': 'opencv', 'index_or_path': /dev/fixed_camera, 'width': 640, 'height': 480, 'fps': 30},'camera2': {'type': 'opencv', 'index_or_path': /dev/hand_camera, 'width': 640, 'height': 480, 'fps': 20}}" \
+    --task="Pick up the orange ball and put it in the blue box" \
+    --pretrained_name_or_path=outputs/smolvla_grab_ball1/checkpoints/last/pretrained_model \
+    --policy_type=smolvla \
+    --actions_per_chunk=50 \
+    --chunk_size_threshold=0.5 \
+    --policy_device=cuda \
+    --aggregate_fn_name=weighted_average \
+    --debug_visualize_queue_size=True
 //训练pi0
 //安装依赖包
 pip install -e ".[pi]"
