@@ -332,7 +332,7 @@ def forward(self, images, img_masks, lang_tokens, lang_masks, state, actions, no
     return losses
 
 ```
-## 异步推理   
+## 异步推理Asynchronous Inference   
 在SmolVLA提到了异步推理，先来看看同步推理。同步（sync）推理一次性生成长度为n的动作队列（chunk）$A_t = (a_t, a_{t+1}, \ldots, a_{t+n})$执行完再用新观测预测下一段。执行与推理串行，会产生“空窗”（执行停下等待推理）。而异步（async）推理是解耦**动作执行 和 动作预测**。机器人端持续消费现有队列；当队列余额低于阈值就异步把当前观测发给策略端预测“下一段”，回来后与旧队列重叠拼接。这样执行与推理并行，显著降低总时延，同时仍保持接近的成功率。
 ![alt text](image-48.png)    
 异步推理流程如下:
@@ -343,6 +343,15 @@ def forward(self, images, img_masks, lang_tokens, lang_masks, state, actions, no
 RobotClient（机器人端）：以控制周期$\Delta t$持续下发队列头部动作；本地维护动作队列$A_t$与触发逻辑；可做相似度过滤（见下节）。
 PolicyServer（策略端）：接收观测$o_t$，运行策略$\pi$预测新队列$\widetilde{A}_{t+1}$后返回；可放在更强的远端算力（GPU/工作站/云）。
 ![alt text](image-49.png)
+
+## Real-Time Chunking(RTC) 
+RTC主要工作原理是即算法在执行前一个动作块的同时生成下一个动作块，冻结因推理延迟而必然执行的动作，并对剩余部分进行“图像修复”操作    
+比如从一个动作分块策略开始，记作$\pi(A_t | o_t)$，其中$A_t=(a_t,a_{t+1},...,a_{a+H+1})$是未来动作的一个分块，$o_t$是观测值，t是控制器的时间步，H是预测视野。
+基于流策略中生成动作块时，首先从标准高斯分布中采样随机噪声$A^0_t$，然后，使用如下所示的更新规则从 $\tau$ =0 到 1 对流的速度场$v_{\pi}$(一个经过学习的神经网络)进行积分，此过程定义如下：
+$$
+A^{\tau + \frac{1}{n}}_t = A^{\tau}_t + \frac{1}{n}v_{\pi}(A^\tau_t,o_t,\tau)
+$$
+
 ## 训练调整参数
 
 ```shell
@@ -352,6 +361,7 @@ PolicyServer（策略端）：接收观测$o_t$，运行策略$\pi$预测新队�
                'peak_lr': 0.0001,  #峰值学习率
                'type': 'cosine_decay_with_warmup'},
 ```
+
 
 ## 参考文献
 - [深入理解SmolVLA中的Flow Matching Action Expert：从理论到实现](https://blog.csdn.net/jiaquan3011/article/details/149692907)

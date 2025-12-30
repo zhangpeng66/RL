@@ -68,7 +68,7 @@ python -m lerobot.scripts.lerobot_teleoperate \
     --display_data=true
 
 //录制数据(任务名字不能混淆,需要统一)
-//--dataset.episode_time_s=20 整个任务的周期，以秒为单位,默认为60，根据完成任务所需时间的长短来设置
+//--dataset.episode_time_s=50 整个任务的周期，以秒为单位,默认为60，根据完成任务所需时间的长短来设置
 //dataset.reset_time_s 执行完任务后场景恢复到初始状态所需的时间，以秒为单位,默认为60，如果场景恢复很快，可以设置短一些，比如5秒。如果场景很复杂，涉及多件物品的复位，则需要设置得长一些
 //任务1:  Pick up the blue duck toy and put it in the blue box
 //任务2： Pick up the orange ball and put it in the blue box
@@ -84,7 +84,7 @@ python -m lerobot.scripts.lerobot_record \
     --teleop.id=R20241230 \
     --display_data=true \
     --dataset.repo_id=${HF_USER}/so101_test \
-    --dataset.num_episodes=10 --dataset.episode_time_s=20 \
+    --dataset.num_episodes=10 --dataset.episode_time_s=50 \
     --dataset.single_task="Pick up the orange ball and put it in the blue box"
 
 //本地回放录制数据
@@ -162,18 +162,15 @@ python -m lerobot.scripts.lerobot_train  \
 export HF_USER=zp_robot
 cd RL/lerobot/src
 rm -rf ~/.cache/huggingface/lerobot/zp_robot/eval_so101
-
+//删除遥操作控制
 python -m lerobot.scripts.lerobot_record \
     --robot.disable_torque_on_disconnect=true \
     --robot.type=so101_follower \
     --robot.port=/dev/so101_follower_left \
     --robot.id=R20191207 \
     --robot.cameras="{ 'handeye': {'type': 'opencv', 'index_or_path': /dev/hand_camera, 'width': 640, 'height': 480, 'fps': 20},'fixed': {'type': 'opencv', 'index_or_path': /dev/fixed_camera, 'width': 640, 'height': 480, 'fps': 30}}" \
-    --teleop.type=so101_leader \
-    --teleop.port=/dev/so101_leader_left \
-    --teleop.id=R20241230 \
     --display_data=true \
-    --dataset.num_episodes=10 --dataset.episode_time_s=20 \
+    --dataset.num_episodes=10 --dataset.episode_time_s=50 \
     --dataset.single_task="Pick up the orange ball and put it in the blue box" \
     --policy.path=outputs/act/checkpoints/last/pretrained_model \
     --policy.device=cuda \
@@ -233,11 +230,8 @@ python -m lerobot.scripts.lerobot_record \
     --robot.port=/dev/so101_follower_left \
     --robot.id=R20191207 \
     --robot.cameras="{ 'camera1': {'type': 'opencv', 'index_or_path': /dev/fixed_camera, 'width': 640, 'height': 480, 'fps': 30},'camera2': {'type': 'opencv', 'index_or_path': /dev/hand_camera, 'width': 640, 'height': 480, 'fps': 20}}" \
-    --teleop.type=so101_leader \
-    --teleop.port=/dev/so101_leader_left \
-    --teleop.id=R20241230 \
     --display_data=true \
-    --dataset.num_episodes=10 --dataset.episode_time_s=20 \
+    --dataset.num_episodes=10 --dataset.episode_time_s=50 \
     --dataset.single_task="Pick up the orange ball and put it in the blue box" \
     --policy.path=outputs/smolvla_grab_ball1/checkpoints/last/pretrained_model \
     --policy.device=cuda \
@@ -249,21 +243,21 @@ python -m lerobot.scripts.lerobot_record \
     --robot.port=/dev/so101_follower_left \
     --robot.id=R20191207 \
     --robot.cameras="{ 'handeye': {'type': 'opencv', 'index_or_path': /dev/hand_camera, 'width': 640, 'height': 480, 'fps': 20},'fixed': {'type': 'opencv', 'index_or_path': /dev/fixed_camera, 'width': 640, 'height': 480, 'fps': 30}}" \
-    --teleop.type=so101_leader \
-    --teleop.port=/dev/so101_leader_left \
-    --teleop.id=R20241230 \
     --display_data=true \
-    --dataset.num_episodes=10 --dataset.episode_time_s=20 \
+    --dataset.num_episodes=10 --dataset.episode_time_s=50 \
     --dataset.single_task="Pick up the orange ball and put it in the blue box" \
     --policy.path=outputs/checkpoints_smolvla_nobasemodel/last/pretrained_model \
     --policy.device=cuda \
     --dataset.repo_id=${HF_USER}/eval_so101 --dataset.push_to_hub=false 
 
 //异步推理
-//运行服务端
+//运行服务端 需要修改频率fps
 python -m lerobot.async_inference.policy_server \
      --host=127.0.0.1 \
-     --port=8080
+     --port=8080 \
+     --fps=30 \
+     --inference_latency=0.033 \
+     --obs_queue_timeout=1
 //运行客户端,在模型的配置文件config.json和train_config.json中需要注明训练的数据集的repo_id==>"repo_id": "zp_robot/so101_grab_ball_merged1",
 python -m lerobot.async_inference.robot_client \
     --server_address=127.0.0.1:8080 \
@@ -279,6 +273,21 @@ python -m lerobot.async_inference.robot_client \
     --policy_device=cuda \
     --aggregate_fn_name=weighted_average \
     --debug_visualize_queue_size=True
+
+//Real-Time Chunking(RTC)推理 
+//execution_horizon：与前一个数据块保持一致所需的时间步数。数值越高，过渡越平滑，但响应速度可能越慢。 
+//max_guidance_weight：与前一个数据块保持一致性的程度。这是一个超参数，可以进行调整以平衡转换的平滑度和策略的响应速度。对于 10 步流匹配（SmolVLA、Pi0、Pi0.5），10.0 是一个最优值。
+uv run examples/rtc/eval_with_real_robot.py \
+    --policy.path=outputs/smolvla_grab_ball1/checkpoints/last/pretrained_model  \
+    --policy.device=cuda \
+    --rtc.enabled=true \
+    --rtc.execution_horizon=20 \
+    --robot.type=so101_follower \
+    --robot.port=/dev/so101_follower_left \
+    --robot.id=R20191207 \
+    --robot.cameras="{ 'camera1': {'type': 'opencv', 'index_or_path': /dev/fixed_camera, 'width': 640, 'height': 480, 'fps': 30},'camera2': {'type': 'opencv', 'index_or_path': /dev/hand_camera, 'width': 640, 'height': 480, 'fps': 20}}" \
+    --task="Pick up the orange ball and put it in the blue box" \
+    --duration=120   
 //训练pi0
 //安装依赖包
 pip install -e ".[pi]"
@@ -307,8 +316,9 @@ python -m lerobot.scripts.lerobot_train \
     --policy.device=cuda \
     --batch_size=1 
 
-
-
+//hil-serl训练
+python -m lerobot.rl.actor --config_path /home/ahpc/RL/sim_test/configs/train_gym_hil_env.json
+python -m lerobot.rl.learner --config_path /home/ahpc/RL/sim_test/configs/train_gym_hil_env.json
 
 
 
