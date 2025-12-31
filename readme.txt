@@ -162,13 +162,16 @@ python -m lerobot.scripts.lerobot_train  \
 export HF_USER=zp_robot
 cd RL/lerobot/src
 rm -rf ~/.cache/huggingface/lerobot/zp_robot/eval_so101
-//删除遥操作控制
+//删除遥操作控制效果很差，后面还是加入了
 python -m lerobot.scripts.lerobot_record \
     --robot.disable_torque_on_disconnect=true \
     --robot.type=so101_follower \
     --robot.port=/dev/so101_follower_left \
     --robot.id=R20191207 \
     --robot.cameras="{ 'handeye': {'type': 'opencv', 'index_or_path': /dev/hand_camera, 'width': 640, 'height': 480, 'fps': 20},'fixed': {'type': 'opencv', 'index_or_path': /dev/fixed_camera, 'width': 640, 'height': 480, 'fps': 30}}" \
+    --teleop.type=so101_leader \
+    --teleop.port=/dev/so101_leader_left \
+    --teleop.id=R20241230 \
     --display_data=true \
     --dataset.num_episodes=10 --dataset.episode_time_s=50 \
     --dataset.single_task="Pick up the orange ball and put it in the blue box" \
@@ -223,13 +226,16 @@ python -m lerobot.scripts.lerobot_train \
 //总结：多任务训练使用config_path设置模型路径在ball和dark没有效果，正确使用policy.path，录数据的时候任务名字一定要表达好--dataset.single_task
 //smolvla 推理测试
 export HF_ENDPOINT=https://hf-mirror.com
-
+//不加teleop遥操作效果很差
 python -m lerobot.scripts.lerobot_record \
     --robot.disable_torque_on_disconnect=true \
     --robot.type=so101_follower \
     --robot.port=/dev/so101_follower_left \
     --robot.id=R20191207 \
     --robot.cameras="{ 'camera1': {'type': 'opencv', 'index_or_path': /dev/fixed_camera, 'width': 640, 'height': 480, 'fps': 30},'camera2': {'type': 'opencv', 'index_or_path': /dev/hand_camera, 'width': 640, 'height': 480, 'fps': 20}}" \
+    --teleop.type=so101_leader \
+    --teleop.port=/dev/so101_leader_left \
+    --teleop.id=R20241230 \
     --display_data=true \
     --dataset.num_episodes=10 --dataset.episode_time_s=50 \
     --dataset.single_task="Pick up the orange ball and put it in the blue box" \
@@ -243,6 +249,9 @@ python -m lerobot.scripts.lerobot_record \
     --robot.port=/dev/so101_follower_left \
     --robot.id=R20191207 \
     --robot.cameras="{ 'handeye': {'type': 'opencv', 'index_or_path': /dev/hand_camera, 'width': 640, 'height': 480, 'fps': 20},'fixed': {'type': 'opencv', 'index_or_path': /dev/fixed_camera, 'width': 640, 'height': 480, 'fps': 30}}" \
+    --teleop.type=so101_leader \
+    --teleop.port=/dev/so101_leader_left \
+    --teleop.id=R20241230 \
     --display_data=true \
     --dataset.num_episodes=10 --dataset.episode_time_s=50 \
     --dataset.single_task="Pick up the orange ball and put it in the blue box" \

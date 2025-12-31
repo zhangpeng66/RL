@@ -38,7 +38,7 @@ from lerobot.datasets.lerobot_dataset import LeRobotDataset
 
 def main():
     print("Loading dataset...")
-    dataset = LeRobotDataset("zp_robot/so101_grab_ball_duck_merged")
+    dataset = LeRobotDataset("zp_robot/so101_grab_duck_merged2")
     # LeRobot使用元数据系统来管理数据集的结构信息
     print(f"Original dataset: {dataset.meta.total_episodes} episodes, {dataset.meta.total_frames} frames ,repo_id:{dataset.meta.repo_id}")
     print(f"Features: {list(dataset.meta.features.keys())}")
@@ -63,13 +63,13 @@ def main():
     print(dataset.meta)
     
     # print("\n4. Merging datasets...")
-    # dataset1 = LeRobotDataset("zp_robot/so101_grab_duck_merged")
+    # dataset1 = LeRobotDataset("zp_robot/so101_grab_duck2")
     # print(f"Original dataset: {dataset1.meta.total_episodes} episodes, {dataset1.meta.total_frames} frames")
     # dataset2 = LeRobotDataset("zp_robot/so101_grab_duck_wo_ball")
     # print(f"Original dataset: {dataset2.meta.total_episodes} episodes, {dataset2.meta.total_frames} frames")
     
     # print("\n1. Merging train and val splits back together...")
-    # merged = merge_datasets([dataset,dataset1], output_repo_id="zp_robot/so101_grab_ball_duck_merged")
+    # merged = merge_datasets([dataset,dataset1], output_repo_id="zp_robot/so101_grab_duck_merged2")
     # print(f"Merged dataset: {merged.meta.total_episodes} episodes")
 
     # print("\n Deleting episodes ...")
