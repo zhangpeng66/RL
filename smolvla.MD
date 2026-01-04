@@ -342,6 +342,7 @@ def forward(self, images, img_masks, lang_tokens, lang_masks, state, actions, no
 
 RobotClient（机器人端）：以控制周期$\Delta t$持续下发队列头部动作；本地维护动作队列$A_t$与触发逻辑；可做相似度过滤（见下节）。
 PolicyServer（策略端）：接收观测$o_t$，运行策略$\pi$预测新队列$\widetilde{A}_{t+1}$后返回；可放在更强的远端算力（GPU/工作站/云）。
+代码中**actions_per_chunk**即为action queue size，**chunk_size_threshold**即为g
 ![alt text](image-49.png)
 
 ## Real-Time Chunking(RTC) 

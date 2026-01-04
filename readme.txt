@@ -264,8 +264,8 @@ python -m lerobot.scripts.lerobot_record \
 python -m lerobot.async_inference.policy_server \
      --host=127.0.0.1 \
      --port=8080 \
-     --fps=30 \
-     --inference_latency=0.033 \
+     --fps=25 \
+     --inference_latency=0.040 \
      --obs_queue_timeout=1
 //运行客户端,在模型的配置文件config.json和train_config.json中需要注明训练的数据集的repo_id==>"repo_id": "zp_robot/so101_grab_ball_merged1",
 python -m lerobot.async_inference.robot_client \
@@ -277,7 +277,7 @@ python -m lerobot.async_inference.robot_client \
     --task="Pick up the orange ball and put it in the blue box" \
     --pretrained_name_or_path=outputs/smolvla_grab_ball1/checkpoints/last/pretrained_model \
     --policy_type=smolvla \
-    --actions_per_chunk=50 \
+    --actions_per_chunk=20 \
     --chunk_size_threshold=0.5 \
     --policy_device=cuda \
     --aggregate_fn_name=weighted_average \
@@ -286,6 +286,7 @@ python -m lerobot.async_inference.robot_client \
 //Real-Time Chunking(RTC)推理 
 //execution_horizon：与前一个数据块保持一致所需的时间步数。数值越高，过渡越平滑，但响应速度可能越慢。 
 //max_guidance_weight：与前一个数据块保持一致性的程度。这是一个超参数，可以进行调整以平衡转换的平滑度和策略的响应速度。对于 10 步流匹配（SmolVLA、Pi0、Pi0.5），10.0 是一个最优值。
+//source .venv/bin/activate
 uv run examples/rtc/eval_with_real_robot.py \
     --policy.path=outputs/smolvla_grab_ball1/checkpoints/last/pretrained_model  \
     --policy.device=cuda \
@@ -339,3 +340,6 @@ python3 zprobot_find_cameras.py  percipio
 zhangpeng
 Username:zp65
 secret:@Zpqazwsx65
+
+
+日志文件里面是debug等级的

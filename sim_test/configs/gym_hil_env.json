@@ -1,22 +1,21 @@
 {
     "env": {
       "name": "gym_hil",
-      "task": "PandaPickCubeKeyboard-v0",
+      "task": "PandaPickCubeKeyboard-v0", 
       "fps": 1,
       "processor": {
-        "control_mode": "keyboard",
+        "control_mode": "keyboard", 
         "gripper": {
           "use_gripper": true,
           "gripper_penalty": -0.02
         },
         "reset": {
-          "fixed_reset_joint_positions": [0.0, 0.195, 0.0, -2.43, 0.0, 2.62, 0.785],// 下面是六个joint的初始角度，每个episode开始机械臂会重置恢复到此角度
-          "reset_time_s": 2.0,// 每个episode完成后会有5秒的重置时间，重置时间内可以手动的恢复一下现场，例如让物体恢复初始位置
-          "control_time_s": 15.0,//// 每个episode默认20秒，可以提前结束，但超过20秒后直接会切换到下一个episode
-          "terminate_on_success": false // 当在20秒内提前完成了任务时，就直接切换到下一个任务，若为false，会等待直到20秒时再切换
+          "fixed_reset_joint_positions": [0.0, 0.195, 0.0, -2.43, 0.0, 2.62, 0.785],
+          "reset_time_s": 2.0,
+          "control_time_s": 15.0,
+          "terminate_on_success": false 
         },
         "inverse_kinematics": {
-          //每次移动0.025米
           "end_effector_step_sizes": {
             "x": 0.025,
             "y": 0.025,
