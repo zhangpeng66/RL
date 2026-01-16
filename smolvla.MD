@@ -7,7 +7,7 @@ SmolVLA 是一套轻量级视觉-语言-行动（VLA）策略：前端用小型 
 
 模型结构主要有前端的VLM+后端的动作专家Action Expert组成，包括以下组件：
 输入：文本指令token+视觉token（多摄像头采集的图像）+机器的状态token（关节角、传感器）。
-VLM（感知端）：语音采用SmolVLM-2，VLM共有L层，但是只N=⌊L/2⌋层隐藏表示喂给动作专家，视觉采用SigLIP。
+VLM（感知端）：语言采用SmolVLM-2，VLM共有L层，但是只N=⌊L/2⌋层隐藏表示喂给动作专家，视觉采用SigLIP。
 Action Expert（控制端）：一个Flow Matching Transformer，以以Cross Attention→  Self Attention→ Cross Attention的“三明治”层为基本单元，按块预测n步动作序列。
 输出：一次预测长度为n的动作块，对应机器的控制指令。
 ![alt text](image-42.png)
@@ -342,7 +342,7 @@ def forward(self, images, img_masks, lang_tokens, lang_masks, state, actions, no
 
 RobotClient（机器人端）：以控制周期$\Delta t$持续下发队列头部动作；本地维护动作队列$A_t$与触发逻辑；可做相似度过滤（见下节）。
 PolicyServer（策略端）：接收观测$o_t$，运行策略$\pi$预测新队列$\widetilde{A}_{t+1}$后返回；可放在更强的远端算力（GPU/工作站/云）。
-代码中**actions_per_chunk**即为action queue size，**chunk_size_threshold**即为g
+代码中**actions_per_chunk**即为n，**chunk_size_threshold**即为g
 ![alt text](image-49.png)
 
 ## Real-Time Chunking(RTC) 
