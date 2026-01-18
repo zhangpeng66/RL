@@ -370,7 +370,11 @@ python -m lerobot.scripts.lerobot_train \
     --policy.device=cuda \
     --batch_size=1 
 ```
-//hil-serl训练
+hil-serl录数据
+```shell
+python -m lerobot.rl.gym_manipulator --config_path /media/zp/Tiger/AHPC/RL/sim_test/configs/gym_hil_env.json
+```
+hil-serl训练
 ```shell
 python -m lerobot.rl.actor --config_path /home/ahpc/RL/sim_test/configs/train_gym_hil_env.json
 python -m lerobot.rl.learner --config_path /home/ahpc/RL/sim_test/configs/train_gym_hil_env.json
