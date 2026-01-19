@@ -1,4 +1,33 @@
 # <center>smolvla</center>
+- [smolvla](#smolvla)
+  - [研究现状](#研究现状)
+  - [原理](#原理)
+  - [层跳过Layer Skipping](#层跳过layer-skipping)
+  - [视觉token压缩](#视觉token压缩)
+  - [动作专家Expert交替Self-Attention与Cross-Attention](#动作专家expert交替self-attention与cross-attention)
+    - [区别](#区别)
+      - [输入源不同](#输入源不同)
+      - [实现目标](#实现目标)
+      - [QKV作用](#qkv作用)
+    - [因果掩码：防止"时间旅行"](#因果掩码防止时间旅行)
+  - [基于流匹配动作专家Flow Matching Action Expert](#基于流匹配动作专家flow-matching-action-expert)
+    - [概念](#概念)
+    - [常微分方程描述连续变换](#常微分方程描述连续变换)
+    - [Flow Matching的核心创新](#flow-matching的核心创新)
+    - [条件流匹配(Conditional Flow Matching)](#条件流匹配conditional-flow-matching)
+    - [Flow Matching的训练目标(基于向量场)](#flow-matching的训练目标基于向量场)
+    - [条件向量场的构造（conditional feature match）](#条件向量场的构造conditional-feature-match)
+    - [高斯概率路径](#高斯概率路径)
+    - [Flow Matching的训练目标（条件向量场）](#flow-matching的训练目标条件向量场)
+    - [动作序列的噪声化过程](#动作序列的噪声化过程)
+    - [SmolVLA的损失函数](#smolvla的损失函数)
+  - [异步推理Asynchronous Inference](#异步推理asynchronous-inference)
+  - [Real-Time Chunking(RTC)](#real-time-chunkingrtc)
+    - [Soft Masking (软掩码):](#soft-masking-软掩码)
+    - [Guidance Gradient (引导梯度)](#guidance-gradient-引导梯度)
+    - [Integration (更新)](#integration-更新)
+  - [训练调整参数](#训练调整参数)
+  - [参考文献](#参考文献)
 
 ## 研究现状
 SmolVLA 是一套轻量级视觉-语言-行动（VLA）策略：前端用小型 VLM（视觉 SigLIP + 语言 SmolLM2）做感知与理解；后端用一个“动作专家”专门预测一段连续的低层控制。它与Pi0相比，参数规模少了将近10倍只有约0.45B（450M）。
@@ -76,7 +105,7 @@ $$
 
 #### QKV作用
 Q 决定关注目标，K 决定匹配关系，V 决定信息内容
-自注意力建模序列内部关系，交叉注意力实现跨序列信息对齐
+自注意力**建模序列内部关系**，交叉注意力**实现跨序列信息对齐**。
 Query (Q)：当前 token（词或位置）的“查询向量”，代表“我在寻找什么信息”。
 Key (K)：其他 token 的“键向量”，代表“这个位置能提供什么信息”（用于匹配）。
 Value (V)：其他 token 的“值向量”，代表“实际要聚合的信息内容”。
@@ -126,19 +155,28 @@ $$
 x_t = (1-t) \cdot x_0 + t \cdot x_1
 $$
 
-对应的向量场（即移动方向）可以通过求导得到：：
+对应的向量场（即**移动方向**）可以通过求导得到：：
 $$
 u_t(x_t | x_1) = \frac{d}{dt}[(1-t) \cdot x_0 + t \cdot x_1] = -x_0 + x_1 = x_1 - x_0
 $$
 这个结果非常直观：无论在路径的哪个位置，移动方向都是从起点指向终点的向量。
-### 际向量场的构造
+### Flow Matching的训练目标(基于向量场)
+设$x_1$表示某种未知数据分布$q(x_1)$分布的随机变量。我们假设我们只能获得来自$q(x_1)$的数据样本，但无法访问密度函
+数本身。
+此外，我们让$p_t$是一个概率路径， 是一个简单的分布（比如，标准正态分布，并让$p_1$在分布上近似等于$q$ 。稍后我们将讨论如何构建这样的路径。然后设计流匹配目标来匹配此目标概率路径，这将允许我们从$p_0$ 流到$p_1$
+$$
+\mathcal{L_{FM}}(\theta) = \mathbb{E}_{t, p_t(x)}[\|v_t(x, \theta) - u_t(x)\|^2]
+$$
+基于向量场的优化目标有个问题就是我们并不知道$p_t(x),u_t(x)$是什么？根本没法训练$p_t(x)$形式不唯一，我们有很多的路径满足这一要求
+![alt text](image-63.png)
+所以，现在的问题，就是想办法去构建$p_t(x),u_t(x)$。
+### 条件向量场的构造（conditional feature match）
 现在我们有了每一对起点-终点的条件向量场，但我们需要的是整体的向量场。CFM通过取期望来解决这个问题：    
 $$
 u_t(x) = \mathbb{E}_{x_1 \sim q_1}[u_t(x | x_1)]
 $$
 其中$q_1$是目标数据分布（比如我们想要生成的图像分布）,$x_1 \sim q_1$表示从目标分布中采样一个数据点,$u_t(x | x_1)$是给定终点$x_1$时的条件向量场,$\mathbb{E}$表示期望值，即对所有可能的终点取平均
-这个公式的含义是：在位置x和时间t，整体向量场等于所有可能条件向量场的加权平均，权重由目标分布决定。
-
+把未知的概率路径$p_t(x)$ 和向量场$u_t(x)$ 分解成了条件概率路径和条件向量场的表达式。相对于边缘概率路径和向量场 ，条件的形式显然更容易去计算，因为他们依赖于数据点$x_1$，而数据点我们是知道的。
 ### 高斯概率路径  
 在实际应用中，纯粹的直线路径可能过于简单。SmolVLA采用了高斯概率路径，在直线路径的基础上加入了随机性：
 $$
@@ -159,7 +197,7 @@ u_t(x_t | x_1) \approx x_1 - x_t
 $$
 这意味着向量场指向从当前位置到目标位置的方向，这是一个非常直观的结果。
 
-### Flow Matching的训练目标
+### Flow Matching的训练目标（条件向量场）
 有了条件向量场的概念，我们现在可以定义Flow Matching的训练目标。我们希望训练一个神经网络$v_\theta(x_t, t)$来近似真实的向量场$u_t(x_t)$训练损失函数为：
 $$
 \mathcal{L}(\theta) = \mathbb{E}_{t, x_0, x_1, \epsilon}[\|v_\theta(x_t, t) - u_t(x_t | x_1)\|^2]
@@ -179,14 +217,14 @@ $\epsilon\in N(0,I)$从标准正态分布采样的噪声序列
 $\tau \in [0 ,1]$噪声水平参数，控制噪声和真实动作的混合比例     
 $A^{\tau}$噪声化后的动作序列     
 这个公式含义就是  
-当 $\tau = 0$ 时：$A_t^0 = 0 \cdot \epsilon + 1 \cdot A_t = A_t$ （纯真实动作）
-当 $\tau = 1$ 时：$A_t^1 = 1 \cdot \epsilon + 0 \cdot A_t = \epsilon$（纯噪声）
+当 $\tau = 0$ 时：$A_t^0 = 1 \cdot \epsilon + 0 \cdot A_t = \epsilon$ （纯噪声）
+当 $\tau = 1$ 时：$A_t^1 = 0 \cdot \epsilon + 1 \cdot A_t = A_t$（纯真实动作）
 当 $\tau = 0.3$ 时：$A_t^{0.3} = 0.3 \epsilon + 0.7 A_t$ （30%噪声 + 70%真实动作）
 对应的条件向量场为：
 $$
 u(A_t^\tau | A_t) = \epsilon - A_t
 $$
-这个向量场的含义是：无论当前处于哪个噪声水平，移动方向都是从噪声指向真实动作。这是一个非常直观的结果：我们希望从随机的动作逐渐变成有意义的动作。
+这个向量场的含义是：无论当前处于哪个噪声水平，**移动方向**都是从噪声指向真实动作。这是一个非常直观的结果：我们希望从随机的动作逐渐变成有意义的动作。
 ### SmolVLA的损失函数
 根据论文，SmolVLA的训练损失函数为：
 $$
@@ -211,9 +249,9 @@ $u(A^{\tau}_{t}|A_{t})=\epsilon-A_{t}$真实的条件向量场为
 ```shell
 #假设原始数据如下：
 #步骤一
-任务描述: "pick up the red cup"
-图像: 640×480 RGB图像，显示桌面上的红色杯子
-真实动作序列: 50个时间步，每个动作7维（x, y, z, roll, pitch, yaw, gripper）
+#任务描述: "pick up the red cup"
+#图像: 640×480 RGB图像，显示桌面上的红色杯子
+#真实动作序列: 50个时间步，每个动作7维（x, y, z, roll, pitch, yaw, gripper）
 [
   [0.12, -0.05, 0.23, 0.8, 0.15, 0.10, 0.25],  # 时间步1：移动到杯子上方
   [0.15, -0.03, 0.20, 0.8, 0.18, 0.12, 0.22],  # 时间步2：下降接近杯子
@@ -222,9 +260,8 @@ $u(A^{\tau}_{t}|A_{t})=\epsilon-A_{t}$真实的条件向量场为
   ...                                           # 时间步5-50：移动到目标位置
 ]
 
-#步骤二
-
-随机噪声: [
+#步骤二，随机噪声: 
+[
   [0.05, 0.02, -0.03, 0.1, -0.02, 0.01, 0.03],   # 噪声1
   [-0.02, 0.04, 0.01, -0.05, 0.03, -0.01, 0.02], # 噪声2
   [0.01, -0.03, 0.02, 0.08, -0.01, 0.02, -0.01],  # 噪声3
@@ -232,11 +269,12 @@ $u(A^{\tau}_{t}|A_{t})=\epsilon-A_{t}$真实的条件向量场为
   ...
 ]
 
-采样时间: t = 0.3
+#采样时间: t = 0.3
 
 #步骤三
 #计算噪声动作
 time_expanded = time[:, None, None]  # 扩展时间维度
+#这里跟论文的公式不太一样？？？？
 x_t = time_expanded * noise + (1 - time_expanded) * actions
 当 t = 0.3 时：
 噪声动作 = 0.3 × 噪声 + 0.7 × 真实动作
@@ -268,7 +306,7 @@ u_t[2] = [-0.02, 0.04, 0.01, -0.05, 0.03, -0.01, 0.02] -
        = [-0.17, 0.07, -0.19, -0.85, -0.15, -0.13, -0.20]
 
 #步骤五 网络预测
-#这一步将前面处理得到的prefix_embs和suffix_embs输入到Action Expert网络中，预测向量场。
+#这一步将前面处理得到的观测量prefix_embs和带有噪声动作序列suffix_embs输入到Action Expert网络中，预测向量场。
  (_, suffix_out), _ = self.vlm_with_expert.forward(
         attention_mask=att_2d_masks,
         position_ids=position_ids,
