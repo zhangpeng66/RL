@@ -355,7 +355,7 @@ login()
 
 如果遇到了CUDA out of memory，可以尝试把置为True(微调效果待评估)，num_learnable_params由3B降到578M，这样就可以在单张RTX4090(24GB)上微调，此时VRAM占用10950MB，
 //开始训练，减少batch_size没有效果 
-//erobot/pi0，是action expert 模型，paligemma-3b-mix-224 是pre-trained VLM全量模型需要显存>70G，目前不支持lora需要>22.5G
+//lerobot/pi0，是action expert 模型，paligemma-3b-mix-224 是pre-trained VLM全量模型需要显存>70G，目前不支持lora需要>22.5G
 ```shell
 python -m lerobot.scripts.lerobot_train \
     --dataset.repo_id=${HF_USER}/so101_test_merged  --policy.push_to_hub=false\
@@ -369,6 +369,14 @@ python -m lerobot.scripts.lerobot_train \
     --steps=100000 \
     --policy.device=cuda \
     --batch_size=1 
+```
+## hilser教程
+hil-serl训练分类器
+```shell
+#收集分类器数据
+python -m lerobot.rl.gym_manipulator --config_path /media/zp/Tiger/AHPC/RL/sim_test/configs/reward_classifier_env.json
+#训练
+python -m lerobot.scripts.lerobot_train --config_path /media/zp/Tiger/AHPC/RL/sim_test/configs/reward_classifier_train_config.json
 ```
 hil-serl录数据
 ```shell

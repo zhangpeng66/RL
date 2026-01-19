@@ -1,6 +1,6 @@
 {
     "dataset": {
-        "repo_id": "zp_robot/dataset_name",
+        "repo_id": "zp_robot/franka_classifier_0",
         "root": null
     },
     "policy": {
@@ -14,8 +14,9 @@
         "learning_rate": 1e-4,
         "device": "cuda",
         "use_amp": true,
+        "push_to_hub":false,
         "input_features": {
-            "observation.images.side": {
+            "observation.images.front": {
                 "type": "VISUAL",
                 "shape": [
                     3,
@@ -23,7 +24,7 @@
                     128
                 ]
             },
-            "observation.images.front": {
+            "observation.images.wrist": {
                 "type": "VISUAL",
                 "shape": [
                     3,
@@ -33,7 +34,7 @@
             }
         }
     },
-    "batch_size": 16,
+    "batch_size": 64,
     "num_workers": 4,
     "steps": 5000,
     "log_freq": 10,
@@ -42,8 +43,6 @@
     "save_checkpoint": true,
     "seed": 2,
     "resume": false,
-    "fps": 10,
-    "number_of_steps_after_success": 10,
     "optimizer": {
         "grad_clip_norm": 10.0
     },

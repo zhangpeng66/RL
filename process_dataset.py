@@ -38,7 +38,7 @@ from lerobot.datasets.lerobot_dataset import LeRobotDataset
 
 def main():
     print("Loading dataset...")
-    dataset = LeRobotDataset("zp_robot/so101_grab_duck_ball_merged1")
+    dataset = LeRobotDataset("zp_robot/franka_classifier_0")
     # LeRobot使用元数据系统来管理数据集的结构信息
     print(f"Original dataset: {dataset.meta.total_episodes} episodes, {dataset.meta.total_frames} frames ,repo_id:{dataset.meta.repo_id}")
     print(f"Features: {list(dataset.meta.features.keys())}")
