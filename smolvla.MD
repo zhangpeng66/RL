@@ -23,9 +23,12 @@
     - [SmolVLA的损失函数](#smolvla的损失函数)
   - [异步推理Asynchronous Inference](#异步推理asynchronous-inference)
   - [Real-Time Chunking(RTC)](#real-time-chunkingrtc)
-    - [Soft Masking (软掩码):](#soft-masking-软掩码)
-    - [Guidance Gradient (引导梯度)](#guidance-gradient-引导梯度)
-    - [Integration (更新)](#integration-更新)
+    - [提出问题](#提出问题)
+    - [解决问题思路](#解决问题思路)
+      - [权重矩阵W:](#权重矩阵w)
+      - [Guidance Gradient (引导梯度)](#guidance-gradient-引导梯度)
+      - [Integration (更新)](#integration-更新)
+    - [RTC测试](#rtc测试)
   - [训练调整参数](#训练调整参数)
   - [参考文献](#参考文献)
 
@@ -257,7 +260,7 @@ $u(A^{\tau}_{t}|A_{t})=\epsilon-A_{t}$真实的条件向量场为
   [0.15, -0.03, 0.20, 0.8, 0.18, 0.12, 0.22],  # 时间步2：下降接近杯子
   [0.18, -0.01, 0.18, 0.6, 0.20, 0.15, 0.20],  # 时间步3：抓取杯子
   [0.20, 0.02, 0.25, 0.6, 0.22, 0.18, 0.28],   # 时间步4：提起杯子
-  ...                                           # 时间步5-50：移动到目标位置
+  ...                                          # 时间步5-50：移动到目标位置
 ]
 
 #步骤二，随机噪声: 
@@ -322,7 +325,7 @@ v_t = self.action_out_proj(suffix_out.to(dtype=torch.float32))
 #计算损失
 losses = F.mse_loss(u_t, v_t, reduction="none")
 ```
-具体实现在文件[modeling_smolvla.py](lerobot/src/lerobot/policies/smolvla/modeling_smolvla.py)的forward函数
+具体实现在文件[modeling_smolvla.py](lerobot/src/lerobot/policies/smolvla/modeling_smolvla.py)的**forward函数**。
 ```python
 def forward(self, images, img_masks, lang_tokens, lang_masks, state, actions, noise=None, time=None):
     """训练时的前向传播"""
@@ -370,16 +373,27 @@ def forward(self, images, img_masks, lang_tokens, lang_masks, state, actions, no
     return losses
 
 ```
+输出action chunk（$A_t$）的地方在[modeling_smolvla.py](lerobot/src/lerobot/policies/smolvla/modeling_smolvla.py)的**sample_actions函数**。
+```python
+else:
+    v_t = denoise_step_partial_call(x_t)
+    # 网络输出最小损失MSE的v_t
+    # suffix_out = outputs_embeds[1]
+    # suffix_out = suffix_out[:, -self.config.chunk_size :]
+    # suffix_out = suffix_out.to(dtype=torch.float32)
+    v_t = self.action_out_proj(suffix_out)
+x_t = x_t + dt * v_t
+```
 ## 异步推理Asynchronous Inference   
-在SmolVLA提到了异步推理，先来看看同步推理。同步（sync）推理一次性生成长度为n的动作队列（chunk）$A_t = (a_t, a_{t+1}, \ldots, a_{t+n})$执行完再用新观测预测下一段。执行与推理串行，会产生“空窗”（执行停下等待推理）。而异步（async）推理是解耦**动作执行 和 动作预测**。机器人端持续消费现有队列；当队列余额低于阈值就异步把当前观测发给策略端预测“下一段”，回来后与旧队列重叠拼接。这样执行与推理并行，显著降低总时延，同时仍保持接近的成功率。
+在SmolVLA提到了异步推理，先来看看同步推理。同步（sync）推理一次性生成长度为n的动作队列（chunk size）$A_t = (a_t, a_{t+1}, \ldots, a_{t+n})$执行完再用新观测预测下一段。执行与推理串行，会产生“空窗”（执行停下等待推理）。而异步（async）推理是解耦**动作执行 和 动作预测**。机器人端持续消费现有队列；当队列余额低于阈值就异步把当前观测发给策略端预测“下一段”，回来后与旧队列重叠拼接。这样执行与推理并行，显著降低总时延，同时仍保持接近的成功率。
 ![alt text](image-48.png)    
 异步推理流程如下:
 ![alt text](image-50.png)
 ![alt text](image-51.png)
 异步推理在架构上可以分为两个部分：
 
-RobotClient（机器人端）：以控制周期$\Delta t$持续下发队列头部动作；本地维护动作队列$A_t$与触发逻辑；可做相似度过滤（见下节）。
-PolicyServer（策略端）：接收观测$o_t$，运行策略$\pi$预测新队列$\widetilde{A}_{t+1}$后返回；可放在更强的远端算力（GPU/工作站/云）。
+RobotClient（机器人端）：以控制周期$\Delta t$(图中的environment_dt)持续下发队列头部动作；本地维护动作队列$A_t$与触发逻辑；可做相似度过滤（见下节）。
+PolicyServer（策略端）：接收观测$o_t$，运行策略$\pi$(本人猜想这里策略指的就是smolvla)预测新队列$\widetilde{A}_{t+1}$后返回；可放在更强的远端算力（GPU/工作站/云）。
 代码中**actions_per_chunk**即为n，**chunk_size_threshold**即为g
 ![alt text](image-49.png)
 
@@ -390,12 +404,16 @@ RTC主要工作原理是即算法在执行前一个动作块的同时生成下�
 $$
 A^{\tau + \frac{1}{n}}_t = A^{\tau}_t + \frac{1}{n}v_{\pi}(A^\tau_t,o_t,\tau)
 $$
-为实现实时策略，必须首先引入异步推理机制：提前启动推理过程，使其与动作执行并发进行，定义$d = [\delta / \Delta t]$ 并将该量称为推理延迟，对应于从接收到$o_t$到获得动作块$\mathbf{A}_{t}$之间的时间间隔，由于策略在生成$A_{s-d}$ 时无法预知 s-d 至 s 时间段内的状态变化，动作序列$a_{s-1|0}$ 与$a_{s|s-d}$ 间的过渡点可能出现任意阶跃式突变，甚至超出分布范围，类似于执行时限过短的情况，该策略会导致动作顿挫现象，且延迟越高顿挫越剧烈
-具体参见下图，这是连续两个块之间典型分叉的一个示例。推理在第 3 步和第 4 步之间开始。正在执行的原始块 {$a_t$}（黑色）计划从障碍物上方通过，而新生成的块 {$a^{\prime}_t$}（红色）则计划从下方通过。然而，{$a^{\prime}_t$} 要到 7 步之后的  时刻才可用
+
+### 提出问题
+为实现实时策略，必须首先引入异步推理机制：提前启动推理过程，使其与动作执行并发进行，定义$d = [\delta / \Delta t]$ 并将该量称为推理延迟inference delay，对应于从接收到$o_t$到获得动作块$\mathbf{A}_{t}$之间的时间间隔，由于策略在生成$A_{s-d}$ 时无法预知 s-d 至 s 时间段内的状态变化，动作序列$a_{s-1|0}$ 与$a_{s|s-d}$ 间的过渡点可能出现任意阶跃式突变，甚至超出分布范围，类似于执行时限过短的情况，该策略会导致动作顿挫现象，且延迟越高顿挫越剧烈
+具体参见下图，这是连续两个块之间典型分叉的一个示例。推理在第 3 步和第 4 步之间开始。正在执行的原始块 {$a_t$}（黑色线条）计划从障碍物上方通过，而新生成的块 {$a^{\prime}_t$}（红色线条）则计划从下方通过。然而，{$a^{\prime}_t$} 要到 7 步之后的  时刻才可用，有两种情况
 ![alt text](image-52.png)
-一个简单的异步算法可能会从 $a_{10}$ 跳转到$a_{11}^{\prime}$，从而导致非常高的、超出分布的加速度——即机械臂突然剧烈抖动到某个位置
+第一个情况：一个简单的异步算法可能会从 $a_{10}$ 跳转到$a_{11}^{\prime}$，从而导致非常高的、超出分布的加速度——即机械臂突然剧烈抖动到某个位置
 ————
-至于**时间集成temporal ensemble**(棕色)，即在块之间进行插值，可以减少加速度，但会产生较差的动作。
+第二个情况：至于**时间集成temporal ensemble**(棕色线条)，即在块之间进行插值，可以减少加速度，但会产生较差的动作，有可能碰撞障碍物。
+
+### 解决问题思路
 因此，将这些动作“冻结”为已知会被执行的值是合理的；作者的目标是在保证该冻结前缀一致性的前提下，补全新分块的剩余部分(如上图的a11-a15，如下图的a4-a10)，这类似于修复一幅被移除部分的图像。
 ![alt text](image-53.png)
 简言之，软掩码就像在两段动作间加了个“缓冲带”，让动作接得更自然，举个例子：假设预测范围H=16，执行范围s=5，延迟d=4
@@ -405,10 +423,10 @@ $$
 - 最后5个动作(即$a_{11}$到$a_{15}$，全新生成)的权重是0
 
 这样，新分块在点火柴时会更“尊重”前一段的划火柴动作，慢慢过渡到点燃蜡烛，而不是突然换个策略   
-### Soft Masking (软掩码):
+#### 权重矩阵W:
 为了解决拼接处的跳变（Jerky movements）， 定义了一个权重矩阵W
 ![alt text](image-55.png)
-### Guidance Gradient (引导梯度)
+#### Guidance Gradient (引导梯度)
 我们把其中的下面这部分定义为引导项g——它将引导新块的生成 本质实则就是引导去噪了，然后将其一拆为二
 $$
 g = (Y - \hat{A}^1_t)^T diag(W)\frac{\partial{\hat{A}^1_t}}{\partial A^{\tau}_t}
@@ -417,15 +435,48 @@ $$
 $$
 e = (Y - \hat{A}^1_t)^T diag(W)
 $$
-这里的Y是目标——即上一块的动作$A_{\text {prev }}$相当于计算当前(最新)生成的估计值$\hat{A}^1_t$——如上文提到过的，$\widehat{\mathbf{A}_{t}^{1}}$是最终完全去噪动作片段的估计，与上一块$A_{prev}$的差异』       
-第二步，再算Vector-Jacobian Product
+这里的Y是目标——即上一块的动作$A_{\text {prev }}$，计算当前(最新)生成的估计值$\hat{A}^1_t$——如上文提到过的，$\widehat{\mathbf{A}_{t}^{1}}$是最终完全去噪动作片段的估计，与上一块$A_{prev}$的差异       
+第二步，再算向量雅可比内积Vector-Jacobian Product 
 $$
 g = e\frac{\partial{\hat{A}^1_t}}{\partial A^{\tau}_t}
 $$
 
-### Integration (更新)  
-将模型预测的速度场$v_\pi$加上引导梯度 g（受$\beta$裁剪限制）
+#### Integration (更新)  
+将模型预测的速度场$v_\pi$加上引导梯度 g（受$\beta$裁剪限制）就得到RTC输出
 ![alt text](image-56.png)
+主要代码在[modeling_rtc.py](./lerobot/src/lerobot/policies/rtc/modeling_rtc.py)文件中denoise_step去噪函数
+```python
+#定义权重矩阵
+weights = (
+            self.get_prefix_weights(inference_delay, execution_horizon, action_chunk_size)
+            .to(x_t.device)
+            .unsqueeze(0)
+            .unsqueeze(-1)
+        )
+#计算引导梯度correction
+with torch.enable_grad():
+    v_t = original_denoise_step_partial(x_t)
+    x_t.requires_grad_(True)
+
+    x1_t = x_t - time * v_t  # noqa: N806
+    err = (prev_chunk_left_over - x1_t) * weights
+    grad_outputs = err.clone().detach()
+    correction = torch.autograd.grad(x1_t, x_t, grad_outputs, retain_graph=False)[0]
+
+max_guidance_weight = torch.as_tensor(self.rtc_config.max_guidance_weight)
+tau_tensor = torch.as_tensor(tau)
+squared_one_minus_tau = (1 - tau_tensor) ** 2
+inv_r2 = (squared_one_minus_tau + tau_tensor**2) / (squared_one_minus_tau)
+c = torch.nan_to_num((1 - tau_tensor) / tau_tensor, posinf=max_guidance_weight)
+guidance_weight = torch.nan_to_num(c * inv_r2, posinf=max_guidance_weight)
+guidance_weight = torch.minimum(guidance_weight, max_guidance_weight)
+#积分更新
+result = v_t - guidance_weight * correction
+
+```
+### RTC测试
+对比了标准生成过程（左）和 RTC 生成过程（右）。在 RTC 图中，可以看到前几个步骤（蓝/紫色线条）是如何被引导以匹配红色真实轨迹（前一个数据块的尾部），从而确保数据块之间的平滑过渡。
+![alt text](image-64.png)
 ## 训练调整参数
 
 ```shell
@@ -435,7 +486,6 @@ $$
                'peak_lr': 0.0001,  #峰值学习率
                'type': 'cosine_decay_with_warmup'},
 ```
-
 
 ## 参考文献
 - [深入理解SmolVLA中的Flow Matching Action Expert：从理论到实现](https://blog.csdn.net/jiaquan3011/article/details/149692907)
