@@ -5,15 +5,15 @@
 ![alt text](image-39.png)
 ## Action Chunking and Temporal Ensemble
 
-### Action Chunking
+### 动作分块Action Chunking
 将各个action组合在一起并作为一个单元执行，来提高它们的存储和执行效率。直观地讲，一组动作可以对应于抓住糖果包装纸的一角或将电池插入插槽。在实验中将chunk size固定为 k ：每 k 步，agent都会收到一个观察结果，用来生成接下来的 k  个动作，并按顺序执行这些动作。这意味着任务的有效范围减少了 k 倍。具体而言，该策略对$\pi_{\theta}(a_{t:t+k}|s_t)$进行建模，而不是$\pi_{\theta}(a_t|s_t)$,分块还可以帮助模拟人类演示中的非马尔可夫行为(Non Markov)。具体来说，单步策略会难以应对时间相关的混杂因素，例如演示过程中的停顿，因为行为不仅取决于状态，还取决于时间步长。当混杂因素位于一个组块内时，动作组块可以缓解这个问题，而不会像历史条件策略那样引入因果混淆问题。
 ![alt text](image-34.png)
 
-### Temporal Ensemble
+### 时间集成Temporal Ensemble
 提出了一个**时序集成**（Temporal Ensemble）来组合这些预测。时序集成使用指数加权方案$w_i = exp(-m*i)$,这是一个以i为变量，单调递减的函数，预测发生越久，其权重越大（t=0,权重为0.5），m是控制融合新信息的速度，m越小，融合越快。
 ![alt text](image-35.png)
 
-## CVAE（conditional variational auto-encoder）
+## 条件变分自编码器CVAE（conditional variational auto-encoder）
 **AE**：是一种无监督学习方法，将高维的原始数据映射到一个潜在空间，用低维特征空间z表示，然后从低维特征学习重建原始数据，能够提取数据特征。
 **VAE**：潜在空间用概率表示（正态分布），重新生成采样数据z；
 **CVAE**：与VAE结构差不多，区别是将数据输入Encoder时把数据和其标签c合并在一起输入，输出解码也是将数据和标签一起合并输出；
