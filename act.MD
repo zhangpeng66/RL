@@ -47,7 +47,7 @@ $$
 step 3 预测工作序列predict action sequence:    
 Transformer encoder首先使用 ResNet18 backbone 处理图像，将$480 \times640\times3$ 的 RGB 图像转换为 $15\times20\times512$ 个特征图。然后，沿空间维度展平以获得 $300\times512$ 的序列。为了保留空间信息，在特征序列中添加了一个二维sinusoidal position embedding。对所有 4 幅图像重复此操作，可得到维度为$1200\times512$ 的特征序列。然后再添加两个特征：**当前关节位置和“风格变量”z** 分别通过线性层从原始维度投影到 512。至此，Transformer 编码器的输入为 $1202\times512$。      
 transformer decoder通过交叉注意对encoder输出进行条件设置，其中输入序列是固定位置嵌入(fixed)position embeddings，维度为$k\times512$，称作为query(Q值)，key（K值）和value（V值）来自transfer encoder。这为 Transformer decoder提供了$k\times512$ 的输出维度，然后使用 MLP 将其向下投影到 $k\times14$，对应于接下来 k步的预测目标关节位置，使用 L1 损失进行重建，而不是更常见的 L2 损失：因为 L1 损失可以更精确地建模动作序列，同时当使用增量关节位置而不是目标关节位置作为动作时，性能会下降。
-Testing:   
-风格变量z设为固定值0
+step 4 Testing:   
+风格变量z设为固定值0         
 ![alt text](image-40.png)
 

@@ -406,6 +406,7 @@ python -m lerobot.rl.gym_manipulator --config_path /media/zp/Tiger/AHPC/RL/sim_t
 ```
 hil-serl训练
 ```shell
+export HF_ENDPOINT=https://hf-mirror.com
 python -m lerobot.rl.actor --config_path /home/ahpc/RL/sim_test/configs/train_gym_hil_env.json
 python -m lerobot.rl.learner --config_path /home/ahpc/RL/sim_test/configs/train_gym_hil_env.json
 ```
