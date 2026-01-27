@@ -422,6 +422,7 @@ zhangpeng
 Username:zp65
 secret:@Zpqazwsx65
 
+
 日志文件里面是debug等级的
 
 ## sony手柄配对

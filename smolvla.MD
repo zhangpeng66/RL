@@ -492,3 +492,4 @@ result = v_t - guidance_weight * correction
 - [smolvla.pdf](docs/smolvla.pdf)
 - [FLow_Matching.pdf](docs/FLow_Matching.pdf)
 - [轻量SmolVLA：半层VLM、视觉压缩与异步推理赋能具身智能](https://www.laumy.tech/2723.html/smolvla/)
+
