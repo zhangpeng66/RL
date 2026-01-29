@@ -210,7 +210,7 @@ $\theta$神经网络的参数（权重和偏置）;
 $v_\theta(x_t, t)$神经网络预测的向量场，输入是当前状态$x_t$和时间t;   
 $u_t(x_t | x_1)$真实的条件向量场（我们的"标准答案"）
 ### 动作序列的噪声化过程
-在SmolVLA中，机器人的动作序列被表示为$A_t = (a_t, a_{t+1}, \ldots, a_{t+n})$,其中$a_i$是一个动作向量（包含关节角度、末端执行器位置等信息）。为了应用Flow Matching，SmolVLA将真实动作序列进行噪声化：
+在SmolVLA中，机器人的动作序列被表示为$A_t = (a_t, a_{t+1}, \ldots, a_{t+n})$,其中$a_i$是一个动作向量（包含关节角度、末端执行器位置等信息）。为了应用Flow Matching，SmolVLA将真实动作序列进行噪声化(Noisy Action)：
 $$
 A^{\tau}_{t}=\tau A_{t}+(1-\tau)\epsilon, \epsilon\in N(0,I)
 $$
@@ -218,7 +218,7 @@ $$
 $A_{t}$真实的动作序列（我们的目标）    
 $\epsilon\in N(0,I)$从标准正态分布采样的噪声序列    
 $\tau \in [0 ,1]$噪声水平参数，控制噪声和真实动作的混合比例     
-$A^{\tau}$噪声化后的动作序列     
+$A^{\tau}_t$噪声化后的动作序列     
 这个公式含义就是  
 当 $\tau = 0$ 时：$A_t^0 = 1 \cdot \epsilon + 0 \cdot A_t = \epsilon$ （纯噪声）
 当 $\tau = 1$ 时：$A_t^1 = 0 \cdot \epsilon + 1 \cdot A_t = A_t$（纯真实动作）
@@ -244,7 +244,7 @@ $u(A^{\tau}_{t}|A_{t})=\epsilon-A_{t}$真实的条件向量场为
 
 - 从数据集中采样一个观察-动作对$(o_t,A_t)$
 - 采样噪声 $\epsilon$ 和噪声水平 $\tau$
-- 计算噪声动作$A^{\tau}_{t}=\tau A_{t}+(1-\tau)\epsilon$
+- 计算噪声动作$A^{\tau}_{t}=\tau A_{t}+(1-\tau)\epsilon$,用于输入网络中
 - 计算真实向量场$u(A^{\tau}_{t}|A_{t})=\epsilon-A_{t}$
 - 让网络预测向量场$v_{\theta}(A^{\tau}_{t},o_{t})$
 - 计算预测值和真实值之间的MSE损失
