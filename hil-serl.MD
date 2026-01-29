@@ -98,4 +98,68 @@ replay buffer混合采样：每个训练批次（Batch）中，50% 数据来自�
 - 多摄像头融合：论文使用多个摄像头数据，通过 ResNet-10 处理后进行嵌入拼接，并结合机器人自身状态信息，最终输入强化学习策略网络
 
 
+## Gymnasium
+Gymnasium 的基础知识，包括其四个关键函数：make()、Env.reset()、Env.step() 和 Env.render()。Gymnasium 的核心是 Env，一个表示强化学习理论中马尔可夫决策过程（MDP）的高级 Python 类（注意：这不是一个完美的重构，缺少 MDP 的几个组件）。该类为用户提供了开始新情节、采取行动和可视化智能体当前状态的能力。除了 Env，还提供了 Wrapper 来帮助增强/修改环境，特别是智能体观察、奖励和所采取的行动。
+### 理解智能体-环境循环
+在强化学习中，下方所示的经典“智能体-环境循环”代表了 RL 中学习的发生方式。它比初看起来要简单
+- 智能体观察当前情况，智能体根据所看到的内容选择一个动作；
+- 环境响应新的情况和奖励；
+- 重复直到情节结束；
+
+这看起来可能很简单，但智能体就是这样学会从下棋到控制机器人再到优化业务流程的一切的。
+![alt text](image-65.png)
+### make函数     
+在 Gymnasium 中初始化环境非常简单，可以通过 make() 函数完成，具体实例在[gym_manipulator.py](./lerobot/src/lerobot/rl/gym_manipulator.py)文件，如下
+```python
+env = gym.make(
+    f"gym_hil/{cfg.task}",
+    image_obs=True,
+    render_mode="human",
+    use_gripper=use_gripper,
+    gripper_penalty=gripper_penalty,
+)
+```
+并带有一个可选的 "render_mode" 参数，该参数指定环境应如何可视化。有关不同渲染模式的详细信息，请参阅 Env.render()。渲染模式决定您看到的是可视化窗口（“human”）、获取图像数组（“rgb_array”），还是无视觉运行（None - 训练最快）。
+### reset函数
+初始化环境后，我们 Env.reset() 环境以获取第一个观察以及附加信息。这就像开始一个新游戏或新情节。要使用特定随机种子或选项初始化环境（有关可能的值，请参阅环境文档），请使用 reset() 的 seed 或 options 参数。
+```python
+# Reset environment and processors
+obs, info = env.reset()
+complementary_data = (
+    {"raw_joint_positions": info.pop("raw_joint_positions")} if "raw_joint_positions" in info else {}
+)
+env_processor.reset()
+action_processor.reset()
+```
+
+### step 函数      
+智能体在环境中执行一个动作。Env.step() 执行选定的动作（在我们的示例中，action来自遥操Intervention和策略Policy Transitions）来更新环境。结果，智能体从更新后的环境接收到新的观察，以及采取动作的奖励。这个奖励对于好的动作（例如成功平衡杆）可能是正面的，对于坏的动作（例如让杆倒下）可能是负面的。这种动作-观察的交换被称为一个**时间步Step**。
+
+然而，经过一些时间步后，环境可能会结束——这被称为终止状态。例如，机器人可能已经坠毁，或成功完成了任务，或者我们可能希望在固定数量的时间步后停止。在 Gymnasium 中，如果环境因任务完成或失败而终止，则 step() 会返回 terminated=True。如果我们希望环境在固定数量的时间步后结束（例如时间限制），环境会发出 truncated=True 信号。如果 terminated 或 truncated 中的任何一个为 True，我们就结束这一情节epision。在大多数情况下，您会希望使用 env.reset() 重新启动环境以开始新的情节。
+```python
+# Create action transition
+processed_action_transition = action_processor(transition)
+processed_action = processed_action_transition[TransitionKey.ACTION]
+#obs观察空间，reward奖励值
+obs, reward, terminated, truncated, info = env.step(processed_action)
+```
+
+### 观察空间和动作空间
+Env.action_space 和 Env.observation_space 都是 Space 的实例，这是一个提供关键函数 Space.contains() 和 Space.sample() 的高级 Python 类。Gymnasium 支持多种空间
+- Box：描述具有任何 n 维形状的上限和下限的有界空间（如连续控制或图像像素）；
+- Discrete：描述一个离散空间，其中 {0, 1, ..., n-1} 是可能的值（如按钮按下或菜单选择）；
+- MultiBinary：描述任何 n 维形状的二进制空间（如多个开关）；
+- MultiDiscrete：由一系列 Discrete 动作空间组成，每个元素中有不同数量的动作；
+- Text：描述一个具有最小和最大长度的字符串空间；
+- Dict：描述一个更简单空间字典；
+- Tuple：描述一个简单空间的元组；
+- Graph：描述一个具有相互连接的节点和边的数学图（网络）；
+- Sequence：描述可变长度的简单空间元素。
+
+Environment observation space: Dict('agent_pos': Box(-inf, inf, (18,), float32), 'pixels': Dict('front': Box(0, 255, (128, 128, 3), uint8), 'wrist': Box(0, 255, (128, 128, 3), uint8)))
+Environment action space: Box([-1. -1. -1.  0.], [1. 1. 1. 2.], (4,), float32)
+Environment processor: DataProcessorPipeline(name='DataProcessorPipeline', steps=4: [Numpy2TorchActionProcessorStep, VanillaObservationProcessorStep, ..., DeviceProcessorStep])
+Action processor: DataProcessorPipeline(name='DataProcessorPipeline', steps=2: [InterventionActionProcessorStep, Torch2NumpyActionProcessorStep])
+
+
 
