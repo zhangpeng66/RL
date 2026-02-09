@@ -31,7 +31,7 @@ RLPD与其他算法的区别
 $$
 \mathcal{L}_\mathcal{Q}(\phi)=\mathbb{E}_{s,a,s'}\left[\left(\mathcal{Q}_{\phi}(s,a)-(r(s,a)+\gamma\mathbb{E}_{a'\sim\pi_{\theta}}[\mathcal{Q}_{\bar{\phi}}(s',a')])\right)^2\right]\tag{1} 
 $$
-其中Q函数使用sarsa贝尔曼方程形式,使用均方误差损失： 最小化当前 Q 值与目标值的损失，$\mathcal{Q}_{\bar{\phi}}$是一个目标网络计算未来 Q 值。
+其中Q函数使用sarsa贝尔曼方程BE形式,使用均方误差损失： 最小化当前 Q 值与目标值的损失，$\mathcal{Q}_{\bar{\phi}}$是一个目标网络计算未来 Q 值。
 $$
 \mathcal{L}_{\pi}(\theta)=-\mathbb{E}_{s}\left[\mathbb{E}_{a\sim\pi_{\theta}(a)}[\mathcal{Q}_{\phi}(s,a)]+\alpha \mathcal{H}(\pi_{\theta}(\cdot|s))\right]\tag{2}
 $$
@@ -52,7 +52,7 @@ $$
 $$
 
 ### 夹爪控制(DQN Update)
-对于涉及夹爪控制的任务，我们采用了一个独立的评价网络（critic network）来评估离散的抓取动作。评价网络更新，遵循标准的DQN方法，并通过引入目标网络（target network）来稳定训练，如下所示：
+对于涉及夹爪控制的任务，我们采用了一个独立的评价网络（critic network）来评估离散的抓取动作。评价网络更新，遵循标准的DQN方法(TD方法采用贝尔曼最优方程BOE)，并通过引入目标网络（target network）来稳定训练，如下所示：
 $$
 \mathcal{L}(\theta)=\mathbb{E}_{s,a,s'}\left[\left(r+\gamma \mathcal{Q}_{\theta'}(s',\arg\max_{a'}\mathcal{Q}_{\theta}(s',a'))-\mathcal{Q}_{\theta}(s,a)\right)^2\right]\tag{3}
 $$
