@@ -29,7 +29,7 @@ RLPD与其他算法的区别
 ![alt text](image-62.png)
 #### Q函数更新(Critic)  
 $$
-\mathcal{L}_\mathcal{Q}(\phi)=\mathbb{E}_{s,a,s'}\left[\left(\mathcal{Q}_{\phi}(s,a)-(r(s,a)+\gamma\mathbb{E}_{a'\sim\pi_{\theta}}[\mathcal{Q}_{\bar{\phi}}(s',a')])\right)^2\right]\tag{1} 
+\mathcal{L}_\mathcal{Q}(\phi)=\mathbb{E}_{s,a,s'}\left[\left(\mathcal{Q}_{\phi}(s,a)-(r(s',a')+\gamma\mathbb{E}_{a'\sim\pi_{\theta}}[\mathcal{Q}_{\bar{\phi}}(s',a')])\right)^2\right]\tag{1} 
 $$
 其中Q函数使用sarsa贝尔曼方程BE形式,使用均方误差损失： 最小化当前 Q 值与目标值的损失，$\mathcal{Q}_{\bar{\phi}}$是一个目标网络计算未来 Q 值。
 $$
@@ -54,7 +54,7 @@ $$
 ### 夹爪控制(DQN Update)
 对于涉及夹爪控制的任务，我们采用了一个独立的评价网络（critic network）来评估离散的抓取动作。评价网络更新，遵循标准的DQN方法(TD方法采用贝尔曼最优方程BOE)，并通过引入目标网络（target network）来稳定训练，如下所示：
 $$
-\mathcal{L}(\theta)=\mathbb{E}_{s,a,s'}\left[\left(r+\gamma \mathcal{Q}_{\theta'}(s',\arg\max_{a'}\mathcal{Q}_{\theta}(s',a'))-\mathcal{Q}_{\theta}(s,a)\right)^2\right]\tag{3}
+\mathcal{L}(\theta)=\mathbb{E}_{s,a,s'}\left[\left(r(s',a')+\gamma \mathcal{Q}_{\theta'}(s',\arg\max_{a'}\mathcal{Q}_{\theta}(s',a'))-\mathcal{Q}_{\theta}(s,a)\right)^2\right]\tag{3}
 $$
 其中$\theta'$是目标网络的参数，可以通过对当前网络参数进行Polyak平均化获得  
 
@@ -91,7 +91,7 @@ RL缓冲区（RL buffer）：用于存储在线策略生成的数据。
 replay buffer混合采样：每个训练批次（Batch）中，50% 数据来自先验数据集$\mathcal{D}_{\text{prior}}$（如专家演示、历史经验），50% 数据来自在线策略$\pi_\theta$与环境交互的实时数据$\mathcal{D}_{\text{online}}$
 
 ## 网络机构Network Architecture  
-神经网络架构使用相同的预训练视觉骨干网络处理来自多台摄像头的图像。具体来说，我们使用了ResNet-10模型，该模型在ImageNet数据集上进行过预训练，以生成输出嵌入。这些嵌入随后被连接起来，并进一步与处理后的本体感知信息结合，从而促进了更高效、更有效的学习过程。   
+神经网络架构使用相同的预训练视觉骨干网络处理来自多台摄像头的图像。具体来说，我们使用了ResNet-10模型，该模型在ImageNet数据集上进行过预训练，与机械臂状态编码后，输入到MLP（多层感知机multilayer perceptron），从而促进了更高效、更有效的学习过程。   
 - 预训练的视觉骨干网络是指在大规模数据集上预训练的神经网络，用于从图像中提取特征，常用于计算机视觉和强化学习任务。
 - 使用预训练的 ResNet-10 可以加速学习，提高稳定性，并减少对大规模数据的依赖，特别适用于机器人强化学习。
 - 在强化学习中，视觉骨干网络可以增强探索效率，并结合本体感知信息，提高模型的决策能力。
