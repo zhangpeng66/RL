@@ -42,7 +42,7 @@ SmolVLA 是一套轻量级视觉-语言-行动（VLA）策略：前端用小型 
 VLM（感知端）：语言采用SmolVLM-2，VLM共有L层，但是只N=⌊L/2⌋层隐藏表示喂给动作专家，视觉采用SigLIP。
 Action Expert（控制端）：一个Flow Matching Transformer，以以Cross Attention→  Self Attention→ Cross Attention的“三明治”层为基本单元，按块预测n步动作序列。
 输出：一次预测长度为n的动作块，对应机器的控制指令。
-![alt text](image-42.png)
+![alt text](images/image-42.png)
 SmolVLA与Pi0有很多相似之处，不过其背后有四个关键设计，分别是Layer Skipping（层跳过）、Visual tokens reduction（视觉token压缩）、动作专家交替Self-Attn与Cross-Attn、异步推理。
 
 ## 层跳过Layer Skipping
@@ -50,14 +50,14 @@ SmolVLA与Pi0有很多相似之处，不过其背后有四个关键设计，分�
 
 ## 视觉token压缩  
 在transformer里面，“token”就是序列里的一个位置。对图像来说，我们把一张图拆成很多小块（patch）或网格上的特征点，每个块/点用一个向量表示，这个向量就是视觉token，设patch的特征图大小为$\frac{H}{p} \times \frac{W}{p} \times d$,选一个下采样因子r (整数)，做 space-to-depth：
-![alt text](image-44.png)
+![alt text](images/image-44.png)
 压缩过程如下：
 输入图像尺寸为$512\times512$
 patch大小为$p=16 \Rightarrow 32 \times 32$
 下采样因子选择$r = 4 \Rightarrow \frac{32}{4} \times \frac{32}{4} = 8 \times 8 =64$ 为特征图大小（token数量）    
 则通道数为$d = 3 \times 4^2 = 48$
 总结一下smolvla在视觉token上进行了压缩，使用space-to-depth(pixel shuffle)，对于512X512的图每帧token从1024降低到了64帧,通道数从3变成48。
-![alt text](image-43.png)
+![alt text](images/image-43.png)
 
 ## 动作专家Expert交替Self-Attention与Cross-Attention
 交叉注意力层的工作：
@@ -79,16 +79,16 @@ VLM回答：“需要拿起红色的杯子，杯子在图像的右上角”
 通过这种因果自注意力机制，确保了动作序列在时间上的连贯性和逻辑性，每个时间步的动作都能充分考虑之前的动作历史，但不会"预知"未来的动作。     
 
 在动作专家中使用了交叉注意力机制，具体的排布可以配置。VLM的每一层与右边的Expert是一一对齐的，下图以VLM和Expert都为4层来示例交替注意力的实现。
-![alt text](image-45.png)
+![alt text](images/image-45.png)
 **自注意力Self-Attn**（管自己，守时序）：只允许第 i 步看 ≤i 的历史步（因果掩码），在动作序列内部传播动力学与约束，做轨迹的时间一致性与平滑。在计算注意力时，会将VLM的QKV与Expert的QKV进行拼接起来一起送入transformer计算，但通过掩码保证 VLM 的Q只看自己（不去读 Expert），而 Expert 的 Q 可以访问 VLM 的 K/V（即“读”VLM 语义），这样既提供了计算效率也提升了Expert的语义丰富性。
 **交叉注意力Cross-Attn**（看环境，取证）：看环境取证，让每个动作 token 先从条件特征里“读”一遍（条件特征=VLM中间层输出，含文本指令+多路视觉+状态）。这样动作表示一开始就被场景锚定，知道当下该关注哪里/哪件物体。具体是交叉注意力计算Q来自Expert Action自己，而K/V 来自 VLM 对应层的输出缓存。
 
 ### 区别
 #### 输入源不同
 Cross Attention：来自两个不同的序列，K/V值来自编码器输入量$X_e$,Q值来自解码器数量$X_d$
-![alt text](image-46.png)
+![alt text](images/image-46.png)
 Self Attention：K/V/Q来自编码器的同一序列
-![alt text](image-47.png)
+![alt text](images/image-47.png)
 #### 实现目标
 Self Attention：允许序列内部每个 token 动态关注其他 token（包括自己）。捕捉序列内的长距离依赖和上下文关系，例如句子中词与词的相关性。查询（Q）、键（K）和值（V）均来自编码器同一序列X，实现编码器序列内部的注意力计算，适用于语言建模、图像处理等任务。Transformer 编码器中的注意力层即为典型的自注意力机制，其中每个词对其它所有词都施加不同程度的关注。假设输入特征为X，$w_q,w_k,w_v$需要训练的参数权重矩阵,子注意力分数等于：
 $$
@@ -171,7 +171,7 @@ $$
 \mathcal{L_{FM}}(\theta) = \mathbb{E}_{t, p_t(x)}[\|v_t(x, \theta) - u_t(x)\|^2]
 $$
 基于向量场的优化目标有个问题就是我们并不知道$p_t(x),u_t(x)$是什么？根本没法训练$p_t(x)$形式不唯一，我们有很多的路径满足这一要求
-![alt text](image-63.png)
+![alt text](images/image-63.png)
 所以，现在的问题，就是想办法去构建$p_t(x),u_t(x)$。
 ### 条件向量场的构造（conditional feature match）
 现在我们有了每一对起点-终点的条件向量场，但我们需要的是整体的向量场。CFM通过取期望来解决这个问题：    
@@ -386,16 +386,16 @@ x_t = x_t + dt * v_t
 ```
 ## 异步推理Asynchronous Inference   
 在SmolVLA提到了异步推理，先来看看同步推理。同步（sync）推理一次性生成长度为n的动作队列（chunk size）$A_t = (a_t, a_{t+1}, \ldots, a_{t+n})$执行完再用新观测预测下一段。执行与推理串行，会产生“空窗”（执行停下等待推理）。而异步（async）推理是解耦**动作执行 和 动作预测**。机器人端持续消费现有队列；当队列余额低于阈值就异步把当前观测发给策略端预测“下一段”，回来后与旧队列重叠拼接。这样执行与推理并行，显著降低总时延，同时仍保持接近的成功率。
-![alt text](image-48.png)    
+![alt text](images/image-48.png)    
 异步推理流程如下:
-![alt text](image-50.png)
-![alt text](image-51.png)
+![alt text](images/image-50.png)
+![alt text](images/image-51.png)
 异步推理在架构上可以分为两个部分：
 
 RobotClient（机器人端）：以控制周期$\Delta t$(图中的environment_dt)持续下发队列头部动作；本地维护动作队列$A_t$与触发逻辑；可做相似度过滤（见下节）。
 PolicyServer（策略端）：接收观测$o_t$，运行策略$\pi$(本人猜想这里策略指的就是smolvla)预测新队列$\widetilde{A}_{t+1}$后返回；可放在更强的远端算力（GPU/工作站/云）。
 代码中**actions_per_chunk**即为n，**chunk_size_threshold**即为g
-![alt text](image-49.png)
+![alt text](images/image-49.png)
 
 ## Real-Time Chunking(RTC) 
 RTC主要工作原理是即算法在执行前一个动作块的同时生成下一个动作块，冻结因推理延迟而必然执行的动作，并对剩余部分进行“图像修复”操作    
@@ -408,16 +408,16 @@ $$
 ### 提出问题
 为实现实时策略，必须首先引入异步推理机制：提前启动推理过程，使其与动作执行并发进行，定义$d = [\delta / \Delta t]$ 并将该量称为推理延迟inference delay，对应于从接收到$o_t$到获得动作块$\mathbf{A}_{t}$之间的时间间隔，由于策略在生成$A_{s-d}$ 时无法预知 s-d 至 s 时间段内的状态变化，动作序列$a_{s-1|0}$ 与$a_{s|s-d}$ 间的过渡点可能出现任意阶跃式突变，甚至超出分布范围，类似于执行时限过短的情况，该策略会导致动作顿挫现象，且延迟越高顿挫越剧烈
 具体参见下图，这是连续两个块之间典型分叉的一个示例。推理在第 3 步和第 4 步之间开始。正在执行的原始块 {$a_t$}（黑色线条）计划从障碍物上方通过，而新生成的块 {$a^{\prime}_t$}（红色线条）则计划从下方通过。然而，{$a^{\prime}_t$} 要到 7 步之后的  时刻才可用，有两种情况
-![alt text](image-52.png)
+![alt text](images/image-52.png)
 第一个情况：一个简单的异步算法可能会从 $a_{10}$ 跳转到$a_{11}^{\prime}$，从而导致非常高的、超出分布的加速度——即机械臂突然剧烈抖动到某个位置
 ————
 第二个情况：至于**时间集成temporal ensemble**(棕色线条)，即在块之间进行插值，可以减少加速度，但会产生较差的动作，有可能碰撞障碍物。
 
 ### 解决问题思路
 因此，将这些动作“冻结”为已知会被执行的值是合理的；作者的目标是在保证该冻结前缀一致性的前提下，补全新分块的剩余部分(如上图的a11-a15，如下图的a4-a10)，这类似于修复一幅被移除部分的图像。
-![alt text](image-53.png)
+![alt text](images/image-53.png)
 简言之，软掩码就像在两段动作间加了个“缓冲带”，让动作接得更自然，举个例子：假设预测范围H=16，执行范围s=5，延迟d=4
-![alt text](image-54.png)
+![alt text](images/image-54.png)
 - RTC会给前4个动作(即图中的$a_0$到$a_3$，已执行)的权重1，完全冻结；
 - 接下来的7个动作(即$a_4$到$a_{10}$，可能执行)的权重从1逐渐降到0；
 - 最后5个动作(即$a_{11}$到$a_{15}$，全新生成)的权重是0
@@ -425,7 +425,7 @@ $$
 这样，新分块在点火柴时会更“尊重”前一段的划火柴动作，慢慢过渡到点燃蜡烛，而不是突然换个策略   
 #### 权重矩阵W:
 为了解决拼接处的跳变（Jerky movements）， 定义了一个权重矩阵W
-![alt text](image-55.png)
+![alt text](images/image-55.png)
 #### Guidance Gradient (引导梯度)
 我们把其中的下面这部分定义为引导项g——它将引导新块的生成 本质实则就是引导去噪了，然后将其一拆为二
 $$
@@ -443,7 +443,7 @@ $$
 
 #### Integration (更新)  
 将模型预测的速度场$v_\pi$加上引导梯度 g（受$\beta$裁剪限制）就得到RTC输出
-![alt text](image-56.png)
+![alt text](images/image-56.png)
 主要代码在[modeling_rtc.py](./lerobot/src/lerobot/policies/rtc/modeling_rtc.py)文件中denoise_step去噪函数
 ```python
 #定义权重矩阵
@@ -476,7 +476,7 @@ result = v_t - guidance_weight * correction
 ```
 ### RTC测试
 对比了标准生成过程（左）和 RTC 生成过程（右）。在 RTC 图中，可以看到前几个步骤（蓝/紫色线条）是如何被引导以匹配红色真实轨迹（前一个数据块的尾部），从而确保数据块之间的平滑过渡。
-![alt text](image-64.png)
+![alt text](images/image-64.png)
 ## 训练调整参数
 
 ```shell

@@ -2,9 +2,9 @@
 
 ## 系统架构
 我们的系统由三个主要组件组成：执行器进程（actor process）、学习器进程（learner process）以及位于学习器进程中的回放缓冲区（replay buffer），所有组件都以分布式方式运行
-![alt text](image-60.png)
+![alt text](images/image-60.png)
 学习器进程从两个回放缓冲区中均匀采样数据，并使用RLPD更新策略。当需要夹爪控制时，还会通过DQN额外训练一个抓取评价器（grasp critic）。
-![alt text](image-61.png)
+![alt text](images/image-61.png)
 首先，如左上角所示，Train Reward Classifier，通过远程操作机器人，收集正样本和负样本，并训练一个二元奖励分类器
 随后，如左下角所示，Collect Demonstrations，即收集一小部分演示数据，并在强化学习训练开始时将其加入演示缓冲区
 最后，如上图整块右侧所示，Train RL Online，在在线训练过程中，使用二元分类器作为稀疏奖励信号，并提供人工干预，最初，会比较频繁地进行干预，以从不同状态演示任务的解决方法。随着策略的成功率提高和循环时间加快，可逐步减少干预次数
@@ -26,7 +26,7 @@ RLPD 从先验数据和在线策略数据中均匀采样，形成训练批次。
 - 目标网络稳定训练：减少 Q 值估计的波动。    
 
 RLPD与其他算法的区别
-![alt text](image-62.png)
+![alt text](images/image-62.png)
 #### Q函数更新(Critic)  
 $$
 \mathcal{L}_\mathcal{Q}(\phi)=\mathbb{E}_{s,a,s'}\left[\left(\mathcal{Q}_{\phi}(s,a)-(r(s',a')+\gamma\mathbb{E}_{a'\sim\pi_{\theta}}[\mathcal{Q}_{\bar{\phi}}(s',a')])\right)^2\right]\tag{1} 
@@ -107,7 +107,7 @@ Gymnasium 的基础知识，包括其四个关键函数：make()、Env.reset()�
 - 重复直到情节结束；
 
 这看起来可能很简单，但智能体就是这样学会从下棋到控制机器人再到优化业务流程的一切的。
-![alt text](image-65.png)
+![alt text](images/image-65.png)
 ### make函数     
 在 Gymnasium 中初始化环境非常简单，可以通过 make() 函数完成，具体实例在[gym_manipulator.py](./lerobot/src/lerobot/rl/gym_manipulator.py)文件，如下
 ```python
